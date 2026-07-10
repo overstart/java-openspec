@@ -75,6 +75,8 @@ const TECH_STACK: Record<string, { tech: string; purpose: string }> = {
   "logstash-logback.version": { tech: "Logstash Logback", purpose: "日志收集" },
   "springdoc-openapi.version": { tech: "SpringDoc OpenAPI", purpose: "API 文档" },
   "commons-lang3.version": { tech: "Apache Commons Lang3", purpose: "Java 工具库" },
+  "commons-collections4.version": { tech: "Apache Commons Collections", purpose: "集合工具库" },
+  "commons-io.version": { tech: "Apache Commons IO", purpose: "IO 工具库" },
   "mybatis-generator.version": { tech: "MyBatis Generator", purpose: "代码生成" },
   "spring-data-commons.version": { tech: "Spring Data", purpose: "数据访问抽象" },
 };
