@@ -10,14 +10,31 @@
 - 使用 Mermaid 生成 C4 架构图 + 业务时序图
 - 输出为 OpenSpec 1.5.0 store，自动注册
 
+## 前置条件
+
+| 工具 | 最低版本 | 用途 | 检查命令 |
+|------|---------|------|---------|
+| [Bun](https://bun.sh) | 1.0 | 运行时 | `bun --version` |
+| [CodeGraph](https://github.com/nicholasxuu/codegraph) | 1.3 | Java AST 分析 | `codegraph --version` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.5 | Store 创建与注册 | `openspec --version` |
+
+### 安装 CodeGraph
+
+```bash
+# 安装后需对目标项目执行 codegraph init 建立索引
+codegraph --version
+```
+
+### 安装 OpenSpec
+
+```bash
+npm install -g @fission-ai/openspec@latest
+openspec --version
+```
+
 ## 安装
 
 ```bash
-# 依赖
-# - Bun >= 1.0
-# - CodeGraph (codegraph CLI)
-# - OpenSpec 1.5.0 (openspec CLI)
-
 cd ~/gitrepo/java-openspec
 bun install
 
