@@ -4,21 +4,15 @@ import { join } from "node:path";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import type { AnalysisResult, SpecDoc, DiagramFile } from "./types";
+import type { AnalysisResult, SpecDoc, DiagramFile, TokenUsage } from "./types";
 import { stripPreamble } from "./postprocess";
 import { loadEnv } from "./env";
 
 // 加载 .env (三级优先级)
 await loadEnv();
 
-export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-}
-
 const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY ?? process.env.VOLCENGINE_API_KEY ?? "missing",
+  apiKey: process.env.OPENAI_API_KEY ?? (() => { throw new Error("LLM API key not found. Set OPENAI_API_KEY in .env or ~/.config/java-openspec/.env"); })(),
   baseURL: process.env.LLM_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/coding/v3",
 });
 
@@ -222,13 +216,13 @@ export async function generateDocs(
     docs.push({
       filename: `${r.name}.md`,
       content: r.content,
-      path: `openspec/specs/${r.name}.md`,
+      path: `openspec/docs/${r.name}.md`,
     });
   }
 
   // === Batch 2: 按服务 architecture (并行) ===
   const serviceModules = result.projectInfo.serviceModules.filter(
-    (svc) => svc.artifactId !== "mall-common" && svc.artifactId !== "mall-mbg"
+    (svc) => svc.isService && svc.artifactId !== "mall-common"
   );
 
   const archResults = await Promise.all(
@@ -258,7 +252,7 @@ export async function generateDocs(
     docs.push({
       filename: "architecture.md",
       content: r.content,
-      path: `openspec/specs/${r.artifactId}/architecture.md`,
+      path: `openspec/docs/${r.artifactId}/architecture.md`,
     });
   }
 

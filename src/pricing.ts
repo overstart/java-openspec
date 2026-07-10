@@ -1,4 +1,4 @@
-import type { TokenUsage } from "./generate-docs";
+import type { TokenUsage } from "./types";
 
 interface PricingTier {
   inputPerMillion: number;  // 美元

@@ -8,7 +8,14 @@ export async function loadEnv(): Promise<Record<string, string>> {
 
   // 1. $JAVA_OPENSPEC_ENV 显式指定
   const explicitPath = process.env.JAVA_OPENSPEC_ENV;
-  if (explicitPath) envPaths.push(explicitPath);
+  if (explicitPath) {
+    envPaths.push(explicitPath);
+    try {
+      await readFile(explicitPath, "utf-8");
+    } catch {
+      console.warn(`  ⚠ JAVA_OPENSPEC_ENV=${explicitPath} not found, falling back`);
+    }
+  }
 
   // 2. $PWD/.env 当前工作目录
   envPaths.push(join(process.cwd(), ".env"));

@@ -85,6 +85,12 @@ export interface ServiceAnalysis {
   packageTree: string[];
 }
 
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface FeignClientInfo {
   className: string;
   targetService: string;

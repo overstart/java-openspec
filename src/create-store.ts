@@ -1,15 +1,11 @@
-import { execSync } from "node:child_process";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import type { AnalysisResult, SpecDoc, DiagramFile } from "./types";
 
-function runCommand(cmd: string): string {
-  try {
-    return execSync(cmd, { encoding: "utf-8" });
-  } catch (e: unknown) {
-    const err = e as { stdout?: string; stderr?: string };
-    return err.stdout ?? err.stderr ?? String(e);
-  }
+function runCommand(args: string[]): string {
+  const result = Bun.spawnSync(args);
+  if (!result.exitCode || result.exitCode === 0) return result.stdout.toString();
+  throw new Error(`${args[0]} failed: ${result.stderr.toString().trim()}`);
 }
 
 export async function createStore(
@@ -33,24 +29,12 @@ export async function createStore(
   const diagramsDir = join(specsDir, "diagrams");
   await mkdir(diagramsDir, { recursive: true });
 
-  // 6.2: 写入全局 spec 文件
-  console.log("  Writing global spec files...");
+  // 6.2: 写入 spec 文件
+  console.log("  Writing spec files...");
   for (const doc of docs) {
-    if (doc.path.startsWith("openspec/specs/") && !doc.path.includes("/", "openspec/specs/".length + 1)) {
-      const filePath = join(storePath, doc.path);
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, doc.content, "utf-8");
-    }
-  }
-
-  // 6.3: 写入按服务 spec 文件
-  console.log("  Writing per-service spec files...");
-  for (const doc of docs) {
-    if (doc.path.includes("/", "openspec/specs/".length + 1)) {
-      const filePath = join(storePath, doc.path);
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, doc.content, "utf-8");
-    }
+    const filePath = join(storePath, doc.path);
+    await mkdir(dirname(filePath), { recursive: true });
+    await writeFile(filePath, doc.content, "utf-8");
   }
 
   // 6.4: 写入图表源文件
@@ -62,11 +46,11 @@ export async function createStore(
 
   // 6.5: 注册 store
   console.log("  Registering store...");
-  runCommand(`openspec store register "${storePath}"`);
+  runCommand(["openspec", "store", "register", storePath]);
 
   // 6.7: 校验 store
   console.log("  Validating store...");
-  const doctorOutput = runCommand(`openspec store doctor ${artifactId}-specs`);
+  const doctorOutput = runCommand(["openspec", "store", "doctor", `${artifactId}-specs`]);
   console.log(doctorOutput);
 
   return storePath;

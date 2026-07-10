@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { glob } from "bun";
@@ -16,26 +15,25 @@ import type {
   FeignClientInfo,
 } from "./types";
 
-function runCodeGraph(args: string, projectPath: string): string {
-  try {
-    return execSync(`codegraph ${args}`, {
-      cwd: projectPath,
-      encoding: "utf-8",
-      maxBuffer: 50 * 1024 * 1024,
-    });
-  } catch {
-    return "";
-  }
+// DTO 后缀常量，分类和提取共用
+const DTO_SUFFIXES = ["Param", "Dto", "DTO", "Result", "Detail", "Node", "Item", "Info", "Vo", "VO", "BO", "Query", "Response", "Request", "CallbackResult", "CallbackParam"] as const;
+
+function runCodeGraph(args: string[], projectPath: string): string {
+  const result = Bun.spawnSync(["codegraph", ...args], {
+    cwd: projectPath,
+  });
+  if (!result.exitCode || result.exitCode === 0) return result.stdout.toString();
+  throw new Error(`codegraph ${args.join(" ")} failed: ${result.stderr.toString().trim()}`);
 }
 
 export async function initCodeGraph(projectPath: string): Promise<void> {
   console.log("  Initializing CodeGraph index...");
-  runCodeGraph(`init ${projectPath}`, projectPath);
+  runCodeGraph(["init", projectPath], projectPath);
   console.log("  CodeGraph index ready.");
 }
 
 function explore(projectPath: string, query: string): string {
-  return runCodeGraph(`explore -p ${projectPath} "${query}"`, projectPath);
+  return runCodeGraph(["explore", "-p", projectPath, query], projectPath);
 }
 
 // 使用 glob 扫描所有 Java 文件并提取类名
@@ -88,7 +86,7 @@ function analyzeNamingPatterns(
 
   // DTO 后缀
   const dtoSuffixes = new Set<string>();
-  const dtoSuffixRe = /(Param|Dto|DTO|Result|Detail|Node|Item|Info|Vo|VO|BO|Query|Response|Request|CallbackResult|CallbackParam)$/;
+  const dtoSuffixRe = new RegExp(`(${DTO_SUFFIXES.join("|")})$`);
   for (const d of dtos) {
     const m = d.match(dtoSuffixRe);
     if (m) dtoSuffixes.add(m[1]!);
@@ -296,11 +294,7 @@ export async function analyzeProject(
   const serviceImpls = allClasses.filter((c) => c.endsWith("ServiceImpl"));
   const dtos = allClasses.filter(
     (c) =>
-      c.endsWith("Param") || c.endsWith("Dto") || c.endsWith("DTO") ||
-      c.endsWith("Result") || c.endsWith("Detail") || c.endsWith("Node") ||
-      c.endsWith("Item") || c.endsWith("Info") || c.endsWith("Vo") ||
-      c.endsWith("VO") || c.endsWith("Query") || c.endsWith("Response") ||
-      c.endsWith("CallbackResult") || c.endsWith("CallbackParam")
+      DTO_SUFFIXES.some((s) => c.endsWith(s))
   );
 
   console.log(`  Found ${controllers.length} Controllers, ${services.length} Services, ${dtos.length} DTOs`);

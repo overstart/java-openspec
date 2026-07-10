@@ -205,7 +205,7 @@ function buildDependencyGraph(
     graph[mod.artifactId] = [];
     for (const other of modules) {
       if (other.artifactId === mod.artifactId) continue;
-      const otherGav = `com.macro.mall:${other.artifactId}`;
+      const otherGav = `${groupId}:${other.artifactId}`;
       if (mod.dependencies.some((d) => d === otherGav)) {
         graph[mod.artifactId]!.push(other.artifactId);
       }

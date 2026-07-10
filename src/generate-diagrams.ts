@@ -1,12 +1,5 @@
 import type { AnalysisResult, DiagramFile, MavenModule } from "./types";
 
-// 简单 Mermaid 语法校验：检查图表类型关键字和基本结构
-export function validateMermaid(code: string): boolean {
-  const validTypes = ["flowchart", "sequenceDiagram", "graph", "classDiagram", "stateDiagram", "erDiagram"];
-  const firstLine = code.trim().split("\n")[0]?.trim() ?? "";
-  return validTypes.some((t) => firstLine.startsWith(t));
-}
-
 // 生成 C4 System Context 图 (flowchart)
 function generateContextDiagram(result: AnalysisResult): string {
   const { projectInfo, securityInfo } = result;
@@ -227,46 +220,30 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
 
   // 4.2: C4 System Context
   console.log("  Generating C4 System Context diagram...");
-  const contextCode = generateContextDiagram(result);
-  if (validateMermaid(contextCode)) {
-    diagrams.push({
-      filename: "context.mmd",
-      content: contextCode,
-      type: "flowchart",
-    });
-  } else {
-    console.warn("  ⚠ C4 Context diagram failed validation, still including");
-    diagrams.push({
-      filename: "context.mmd",
-      content: contextCode,
-      type: "flowchart",
-    });
-  }
+  diagrams.push({
+    filename: "context.mmd",
+    content: generateContextDiagram(result),
+    type: "flowchart",
+  });
 
   // 4.3: C4 Container per service
   for (const svc of result.projectInfo.serviceModules) {
-    if (svc.artifactId === "mall-common" || svc.artifactId === "mall-mbg") continue;
-    const containerCode = generateContainerDiagram(svc, result);
-    if (validateMermaid(containerCode)) {
-      diagrams.push({
-        filename: `${svc.artifactId}-container.mmd`,
-        content: containerCode,
-        type: "flowchart",
-      });
-    }
+    if (!svc.isService || svc.artifactId === "mall-common") continue;
+    diagrams.push({
+      filename: `${svc.artifactId}-container.mmd`,
+      content: generateContainerDiagram(svc, result),
+      type: "flowchart",
+    });
   }
 
   // 4.4: Sequence diagrams
   for (const svc of result.projectInfo.serviceModules) {
-    if (svc.artifactId === "mall-common" || svc.artifactId === "mall-mbg") continue;
-    const seqCode = generateSequenceDiagram(svc, result);
-    if (validateMermaid(seqCode)) {
-      diagrams.push({
-        filename: `${svc.artifactId}-flow.mmd`,
-        content: seqCode,
-        type: "sequence",
-      });
-    }
+    if (!svc.isService || svc.artifactId === "mall-common") continue;
+    diagrams.push({
+      filename: `${svc.artifactId}-flow.mmd`,
+      content: generateSequenceDiagram(svc, result),
+      type: "sequence",
+    });
   }
 
   console.log(`  Generated ${diagrams.length} diagrams`);
