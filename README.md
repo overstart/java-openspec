@@ -20,6 +20,9 @@
 
 cd ~/gitrepo/java-openspec
 bun install
+
+# 全局安装 (可选，安装后可直接使用 java-openspec 命令)
+bun link
 ```
 
 ## 配置 LLM
@@ -45,10 +48,12 @@ LLM_BASE_URL=https://api.openai.com/v1
 
 ## 用法
 
+`bun link` 后可直接使用 `java-openspec` 命令，否则用 `bun run src/index.ts`。
+
 ### 单项目模式
 
 ```bash
-bun run src/index.ts init /path/to/mall-swarm
+java-openspec init /path/to/mall-swarm
 ```
 
 ### 多路径模式
@@ -64,7 +69,7 @@ services:
 ```
 
 ```bash
-bun run src/index.ts init /path/to/workspace --config java-openspec.yml
+java-openspec init /path/to/workspace --config java-openspec.yml
 ```
 
 ## 输出
