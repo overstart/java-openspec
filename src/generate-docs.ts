@@ -47,24 +47,55 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   parts.push(`- 服务模块: ${projectInfo.serviceModules.map((m) => m.artifactId).join(", ")}`);
   parts.push(`- 公共库模块: ${projectInfo.libraryModules.map((m) => m.artifactId).join(", ")}`);
 
-  // 版本信息 — 只传关键依赖
+  // 预建技术栈表格（从 pom.xml 直接提取，不经 LLM）
   if (projectInfo.serviceModules.length > 0) {
     const first = projectInfo.serviceModules[0]!;
-    const versions = first.dependencyVersions;
-    const keyDeps = [
-      "spring-boot.version", "spring-cloud.version", "spring-cloud-alibaba.version",
-      "sa-token.version", "hutool.version", "mybatis-spring-boot-starter.version",
-      "druid.version", "knife4j.version", "minio.version", "pagehelper.version",
-      "spring-boot-admin.version", "alipay-sdk.version", "aliyun-oss.version",
-      "mysql-connector.version", "mybatis.version",
-    ];
-    const filtered = keyDeps.filter((k) => versions[k]).map((k) => `${k}=${versions[k]}`);
-    if (filtered.length > 0) {
-      parts.push(`- 关键依赖版本: ${filtered.join(", ")}`);
-    }
-    if (first.springBootVersion) parts.push(`- Spring Boot: ${first.springBootVersion}`);
-    if (first.springCloudVersion) parts.push(`- Spring Cloud: ${first.springCloudVersion}`);
+    const table = buildTechStackTable(first.dependencyVersions);
+    if (table) parts.push(table);
   }
+  parts.push(``);
+
+  // 技术栈静态映射：pom.xml 属性 key → 技术名 + 用途
+const TECH_STACK: Record<string, { tech: string; purpose: string }> = {
+  "spring-boot.version": { tech: "Spring Boot", purpose: "Web 应用框架" },
+  "spring-cloud.version": { tech: "Spring Cloud", purpose: "微服务治理" },
+  "spring-cloud-alibaba.version": { tech: "Spring Cloud Alibaba", purpose: "服务注册/配置/网关" },
+  "sa-token.version": { tech: "Sa-Token", purpose: "认证与授权" },
+  "hutool.version": { tech: "Hutool", purpose: "Java 工具库" },
+  "mybatis-spring-boot-starter.version": { tech: "MyBatis", purpose: "ORM 框架" },
+  "mybatis.version": { tech: "MyBatis", purpose: "ORM 框架" },
+  "druid.version": { tech: "Druid", purpose: "数据库连接池" },
+  "knife4j.version": { tech: "Knife4j", purpose: "API 文档" },
+  "minio.version": { tech: "MinIO", purpose: "对象存储" },
+  "pagehelper.version": { tech: "PageHelper", purpose: "MyBatis 分页插件" },
+  "spring-boot-admin.version": { tech: "Spring Boot Admin", purpose: "服务监控" },
+  "alipay-sdk.version": { tech: "Alipay SDK", purpose: "支付宝支付" },
+  "aliyun-oss.version": { tech: "Aliyun OSS", purpose: "对象存储" },
+  "mysql-connector.version": { tech: "MySQL Connector", purpose: "数据库驱动" },
+  "logstash-logback.version": { tech: "Logstash Logback", purpose: "日志收集" },
+  "springdoc-openapi.version": { tech: "SpringDoc OpenAPI", purpose: "API 文档" },
+  "commons-lang3.version": { tech: "Apache Commons Lang3", purpose: "Java 工具库" },
+  "mybatis-generator.version": { tech: "MyBatis Generator", purpose: "代码生成" },
+  "spring-data-commons.version": { tech: "Spring Data", purpose: "数据访问抽象" },
+};
+
+// 从 pom.xml 提取的版本直接构建技术栈表格，不经过 LLM
+function buildTechStackTable(versions: Record<string, string>): string {
+  const rows: string[] = [];
+  for (const [key, info] of Object.entries(TECH_STACK)) {
+    const ver = versions[key];
+    if (ver) {
+      rows.push(`| ${info.tech} | ${ver} | ${info.purpose} |`);
+    }
+  }
+  if (rows.length === 0) return "";
+  return [
+    "### 技术栈",
+    "| 技术 | 版本 | 用途 |",
+    "|------|------|------|",
+    ...rows,
+  ].join("\n");
+}
   parts.push(``);
 
   if (templateName === "coding-style" || templateName === "overview") {
