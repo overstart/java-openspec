@@ -47,15 +47,20 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   parts.push(`- 服务模块: ${projectInfo.serviceModules.map((m) => m.artifactId).join(", ")}`);
   parts.push(`- 公共库模块: ${projectInfo.libraryModules.map((m) => m.artifactId).join(", ")}`);
 
-  // 版本信息
+  // 版本信息 — 只传关键依赖
   if (projectInfo.serviceModules.length > 0) {
     const first = projectInfo.serviceModules[0]!;
     const versions = first.dependencyVersions;
-    if (Object.keys(versions).length > 0) {
-      parts.push(`- 关键依赖版本:`);
-      for (const [dep, ver] of Object.entries(versions)) {
-        parts.push(`  - ${dep}: ${ver}`);
-      }
+    const keyDeps = [
+      "spring-boot.version", "spring-cloud.version", "spring-cloud-alibaba.version",
+      "sa-token.version", "hutool.version", "mybatis-spring-boot-starter.version",
+      "druid.version", "knife4j.version", "minio.version", "pagehelper.version",
+      "spring-boot-admin.version", "alipay-sdk.version", "aliyun-oss.version",
+      "mysql-connector.version", "mybatis.version",
+    ];
+    const filtered = keyDeps.filter((k) => versions[k]).map((k) => `${k}=${versions[k]}`);
+    if (filtered.length > 0) {
+      parts.push(`- 关键依赖版本: ${filtered.join(", ")}`);
     }
     if (first.springBootVersion) parts.push(`- Spring Boot: ${first.springBootVersion}`);
     if (first.springCloudVersion) parts.push(`- Spring Cloud: ${first.springCloudVersion}`);
