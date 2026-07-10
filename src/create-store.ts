@@ -24,7 +24,8 @@ export async function createStore(
 
   // 6.1: 使用 openspec store setup 创建骨架
   console.log(`  Creating store at ${storePath}...`);
-  const setupCmd = `openspec store setup --path "${storePath}" --no-init-git`;
+  const storeId = `${artifactId}-specs`;
+  const setupCmd = `openspec store setup ${storeId} --path "${storePath}" --no-init-git`;
   runCommand(setupCmd);
 
   // 确保目录存在
@@ -61,7 +62,7 @@ export async function createStore(
 
   // 6.5: 注册 store
   console.log("  Registering store...");
-  runCommand(`openspec store register "${storePath}"`);
+  runCommand(`openspec store register ${storeId} "${storePath}"`);
 
   // 6.7: 校验 store
   console.log("  Validating store...");
