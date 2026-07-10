@@ -87,6 +87,7 @@ export async function pipeline(
     // 5. create-store
     console.log("[5/6] Creating OpenSpec store...");
     const storePath = await createStore(analysisResult, docs, diagrams, options);
+    console.log(`  Store: ${storePath}`);
 
     // 6. done
     console.log("[6/6] Done!");
