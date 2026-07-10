@@ -62,7 +62,7 @@ export async function createStore(
 
   // 6.5: 注册 store
   console.log("  Registering store...");
-  runCommand(`openspec store register ${storeId} "${storePath}"`);
+  runCommand(`openspec store register "${storePath}"`);
 
   // 6.7: 校验 store
   console.log("  Validating store...");
