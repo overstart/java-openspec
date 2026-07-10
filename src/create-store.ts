@@ -102,7 +102,7 @@ export function generateReport(
     `按服务 Spec:`,
     ...result.projectInfo.serviceModules
       .filter((m) => m.artifactId !== "mall-common" && m.artifactId !== "mall-mbg")
-      .map((m) => `  - ${m.artifactId}/ (overview.md, architecture.md)`),
+      .map((m) => `  - ${m.artifactId}/architecture.md`),
     "",
     "=".repeat(60),
   ];

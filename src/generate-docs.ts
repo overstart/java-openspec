@@ -213,76 +213,70 @@ export async function generateDocs(
   const docs: SpecDoc[] = [];
   const totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
-  const specTypes = [
-    { name: "overview", global: true },
-    { name: "coding-style", global: true },
-    { name: "architecture", global: true },
-    { name: "security", global: true },
-  ];
+  function addUsage(u: TokenUsage) {
+    totalUsage.promptTokens += u.promptTokens;
+    totalUsage.completionTokens += u.completionTokens;
+    totalUsage.totalTokens += u.totalTokens;
+  }
 
-  // 5.4-5.7: 全局 spec 生成
-  for (const spec of specTypes) {
-    console.log(`  Generating ${spec.name}.md...`);
-    const template = await loadTemplate(spec.name);
-    const analysis = formatAnalysisForLLM(result, spec.name);
+  // === Batch 1: 全局 spec (4 个并行) ===
+  const specTypes = ["overview", "coding-style", "architecture", "security"] as const;
+  const globalResults = await Promise.all(
+    specTypes.map(async (name) => {
+      console.log(`  Generating ${name}.md...`);
+      const template = await loadTemplate(name);
+      const analysis = formatAnalysisForLLM(result, name);
+      const { content, usage } = await callLLM(template, analysis);
+      const validation = await validateSpecStructure(content, name);
+      if (!validation.valid) {
+        console.warn(`  ⚠ ${name}.md validation warnings:`, validation.warnings);
+      }
+      return { name, content, usage };
+    })
+  );
 
-    const { content, usage } = await callLLM(template, analysis);
-    totalUsage.promptTokens += usage.promptTokens;
-    totalUsage.completionTokens += usage.completionTokens;
-    totalUsage.totalTokens += usage.totalTokens;
-
-    // 5.9: 模板结构校验
-    const validation = await validateSpecStructure(content, spec.name);
-    if (!validation.valid) {
-      console.warn(`  ⚠ ${spec.name}.md validation warnings:`, validation.warnings);
-    }
-
+  for (const r of globalResults) {
+    addUsage(r.usage);
     docs.push({
-      filename: `${spec.name}.md`,
-      content,
-      path: `openspec/specs/${spec.name}.md`,
+      filename: `${r.name}.md`,
+      content: r.content,
+      path: `openspec/specs/${r.name}.md`,
     });
   }
 
-// 5.8: 按服务 spec 生成
-  for (const svc of result.projectInfo.serviceModules) {
-    if (svc.artifactId === "mall-common" || svc.artifactId === "mall-mbg") continue;
+  // === Batch 2: 按服务 architecture (并行) ===
+  const serviceModules = result.projectInfo.serviceModules.filter(
+    (svc) => svc.artifactId !== "mall-common" && svc.artifactId !== "mall-mbg"
+  );
 
-    const analysis = result.serviceAnalyses[svc.artifactId];
-    const svcContext = [
-      `## 服务: ${svc.artifactId}`,
-      `- 路径: ${svc.path}`,
-      `- Controllers: ${analysis?.controllers.length ?? 0} 个`,
-      `- Services: ${analysis?.services.length ?? 0} 个`,
-      `- Controller列表: ${analysis?.controllers.map(c => c.className).join(", ") ?? "无"}`,
-      `- Feign客户端: ${analysis?.feignClients.map(f => `${f.className}→${f.targetService}`).join(", ") ?? "无"}`,
-      `- 包结构: ${analysis?.packageTree.join(", ") ?? "无"}`,
-      `- 依赖: ${svc.dependencies.join(", ")}`,
-      `- 图表: diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
-    ].join("\n");
+  const archResults = await Promise.all(
+    serviceModules.map(async (svc) => {
+      const analysis = result.serviceAnalyses[svc.artifactId];
+      const svcContext = [
+        `## 服务: ${svc.artifactId}`,
+        `- 路径: ${svc.path}`,
+        `- Controllers: ${analysis?.controllers.length ?? 0} 个`,
+        `- Controller列表: ${analysis?.controllers.map(c => c.className).join(", ") ?? "无"}`,
+        `- Services: ${analysis?.services.length ?? 0} 个`,
+        `- Feign客户端: ${analysis?.feignClients.map(f => `${f.className}→${f.targetService}`).join(", ") ?? "无"}`,
+        `- 包结构: ${analysis?.packageTree.join(", ") ?? "无"}`,
+        `- 依赖: ${svc.dependencies.join(", ")}`,
+        `- 图表: diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
+      ].join("\n");
 
-    console.log(`  Generating ${svc.artifactId}/overview.md...`);
-    const { content: svcContent, usage: svcUsage } = await callLLM(await loadTemplate("overview"), svcContext);
-    totalUsage.promptTokens += svcUsage.promptTokens;
-    totalUsage.completionTokens += svcUsage.completionTokens;
-    totalUsage.totalTokens += svcUsage.totalTokens;
+      console.log(`  Generating ${svc.artifactId}/architecture.md...`);
+      const template = await loadTemplate("architecture");
+      const { content, usage } = await callLLM(template, svcContext);
+      return { artifactId: svc.artifactId, content, usage };
+    })
+  );
 
-    docs.push({
-      filename: "overview.md",
-      content: svcContent,
-      path: `openspec/specs/${svc.artifactId}/overview.md`,
-    });
-
-    console.log(`  Generating ${svc.artifactId}/architecture.md...`);
-    const { content: archContent, usage: archUsage } = await callLLM(await loadTemplate("architecture"), svcContext);
-    totalUsage.promptTokens += archUsage.promptTokens;
-    totalUsage.completionTokens += archUsage.completionTokens;
-    totalUsage.totalTokens += archUsage.totalTokens;
-
+  for (const r of archResults) {
+    addUsage(r.usage);
     docs.push({
       filename: "architecture.md",
-      content: archContent,
-      path: `openspec/specs/${svc.artifactId}/architecture.md`,
+      content: r.content,
+      path: `openspec/specs/${r.artifactId}/architecture.md`,
     });
   }
 
