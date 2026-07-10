@@ -26,42 +26,52 @@ const MODEL = process.env.LLM_MODEL ?? "deepseek-v4-flash";
 const MAX_TOKENS = parseInt(process.env.LLM_MAX_TOKENS ?? "8192", 10);
 const TEMPERATURE = parseFloat(process.env.LLM_TEMPERATURE ?? "0.3");
 
-// 技术栈静态映射：pom.xml 属性 key → 技术名 + 用途
-const TECH_STACK: Record<string, { tech: string; purpose: string }> = {
-  "spring-boot.version": { tech: "Spring Boot", purpose: "Web 应用框架" },
-  "spring-cloud.version": { tech: "Spring Cloud", purpose: "微服务治理" },
-  "spring-cloud-alibaba.version": { tech: "Spring Cloud Alibaba", purpose: "服务注册/配置/网关" },
-  "sa-token.version": { tech: "Sa-Token", purpose: "认证与授权" },
-  "hutool.version": { tech: "Hutool", purpose: "Java 工具库" },
-  "mybatis-spring-boot-starter.version": { tech: "MyBatis", purpose: "ORM 框架" },
-  "mybatis.version": { tech: "MyBatis", purpose: "ORM 框架" },
-  "druid.version": { tech: "Druid", purpose: "数据库连接池" },
-  "knife4j.version": { tech: "Knife4j", purpose: "API 文档" },
-  "minio.version": { tech: "MinIO", purpose: "对象存储" },
-  "pagehelper.version": { tech: "PageHelper", purpose: "MyBatis 分页插件" },
-  "spring-boot-admin.version": { tech: "Spring Boot Admin", purpose: "服务监控" },
-  "alipay-sdk.version": { tech: "Alipay SDK", purpose: "支付宝支付" },
-  "aliyun-oss.version": { tech: "Aliyun OSS", purpose: "对象存储" },
-  "mysql-connector.version": { tech: "MySQL Connector", purpose: "数据库驱动" },
-  "logstash-logback.version": { tech: "Logstash Logback", purpose: "日志收集" },
-  "springdoc-openapi.version": { tech: "SpringDoc OpenAPI", purpose: "API 文档" },
-  "commons-lang3.version": { tech: "Apache Commons Lang3", purpose: "Java 工具库" },
-  "commons-collections4.version": { tech: "Apache Commons Collections", purpose: "集合工具库" },
-  "commons-io.version": { tech: "Apache Commons IO", purpose: "IO 工具库" },
-  "mybatis-generator.version": { tech: "MyBatis Generator", purpose: "代码生成" },
-  "spring-data-commons.version": { tech: "Spring Data", purpose: "数据访问抽象" },
-};
+// 从 artifactId 自动推导技术名
+function deriveTechName(artifactId: string): string {
+  // 去掉常见后缀
+  let name = artifactId
+    .replace(/-spring-boot-starter$/, "")
+    .replace(/-spring-boot3-starter$/, "")
+    .replace(/-spring-boot-3-starter$/, "")
+    .replace(/-starter$/, "")
+    .replace(/-spring-boot-starter-web$/, " Web")
+    .replace(/-spring-boot-starter-actuator$/, " Actuator")
+    .replace(/-spring-boot-starter-aop$/, " AOP")
+    .replace(/-spring-boot-starter-test$/, " Test")
+    .replace(/-spring-boot-starter-data-redis$/, " Data Redis")
+    .replace(/-spring-boot-starter-amqp$/, " AMQP")
+    .replace(/-spring-boot-starter$/, "");
 
-// 从 pom.xml 提取的版本直接构建技术栈表格，不经过 LLM
+  // 去掉 vendor 前缀
+  name = name
+    .replace(/^spring-cloud-starter-alibaba-/i, "Spring Cloud Alibaba ")
+    .replace(/^spring-cloud-starter-/i, "Spring Cloud ")
+    .replace(/^spring-boot-starter-/i, "Spring Boot ")
+    .replace(/^spring-boot-/i, "Spring Boot ");
+
+  // 转大驼峰
+  return name
+    .split("-")
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+// 从 pom.xml 的 dependencyManagement 自动构建技术栈表格
 function buildTechStackTable(versions: Record<string, string>): string {
-  const rows: string[] = [];
-  for (const [key, info] of Object.entries(TECH_STACK)) {
-    const ver = versions[key];
-    if (ver) {
-      rows.push(`| ${info.tech} | ${ver} | ${info.purpose} |`);
-    }
-  }
-  if (rows.length === 0) return "";
+  // 过滤出有意义的依赖（排除内部模块、test scope 等）
+  const skipPrefixes = ["com.macro.mall:", "org.projectlombok:", "org.springframework.boot:spring-boot-configuration-processor"];
+  const entries = Object.entries(versions)
+    .filter(([key]) => !skipPrefixes.some(p => key.startsWith(p)))
+    .filter(([key]) => key.includes(":"));
+
+  if (entries.length === 0) return "";
+
+  const rows = entries.map(([key, ver]) => {
+    const artifactId = key.split(":")[1] ?? key;
+    const tech = deriveTechName(artifactId);
+    return `| ${tech} | ${ver} | |`;
+  });
+
   return [
     "### 技术栈",
     "| 技术 | 版本 | 用途 |",
