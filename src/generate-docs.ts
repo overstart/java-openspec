@@ -18,7 +18,7 @@ export interface TokenUsage {
 }
 
 const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY ?? "missing",
+  apiKey: process.env.OPENAI_API_KEY ?? process.env.VOLCENGINE_API_KEY ?? "missing",
   baseURL: process.env.LLM_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/coding/v3",
 });
 
