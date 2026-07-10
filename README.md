@@ -44,9 +44,17 @@ bun link
 
 ## 配置 LLM
 
+`.env` 文件按以下优先级查找：
+
+1. `$JAVA_OPENSPEC_ENV` — 显式指定路径
+2. `$PWD/.env` — 当前工作目录
+3. `~/.config/java-openspec/.env` — XDG 全局配置
+
 ```bash
-cp .env.example .env
-# 编辑 .env，填入 API Key
+# 全局配置 (推荐)
+mkdir -p ~/.config/java-openspec
+cp .env.example ~/.config/java-openspec/.env
+# 编辑 ~/.config/java-openspec/.env，填入 API Key
 ```
 
 默认使用 OpenAI API 格式，兼容任何 OpenAI-compatible 服务。

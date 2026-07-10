@@ -6,6 +6,7 @@ import { analyzeProject } from "./analyze";
 import { generateDiagrams } from "./generate-diagrams";
 import { generateDocs } from "./generate-docs";
 import { createStore, generateReport } from "./create-store";
+import { formatTokenReport } from "./pricing";
 import type { ProjectInfo, MavenModule } from "./types";
 
 interface ConfigFile {
@@ -81,7 +82,7 @@ export async function pipeline(
 
     // 4. generate-docs
     console.log("[4/6] Generating spec documents (this may take a while)...");
-    const docs = await generateDocs(analysisResult, diagrams);
+    const { docs, totalUsage } = await generateDocs(analysisResult, diagrams);
 
     // 5. create-store
     console.log("[5/6] Creating OpenSpec store...");
@@ -92,6 +93,10 @@ export async function pipeline(
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`\nCompleted in ${elapsed}s`);
+
+    // Token 消费报告
+    const model = process.env.LLM_MODEL ?? "unknown";
+    console.log(formatTokenReport(model, totalUsage));
 
     const report = generateReport(analysisResult, docs, diagrams, storePath);
     console.log(report);

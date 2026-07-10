@@ -6,18 +6,15 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { AnalysisResult, SpecDoc, DiagramFile } from "./types";
 import { stripPreamble } from "./postprocess";
+import { loadEnv } from "./env";
 
-// 加载 .env
-const envFile = await readFile(join(import.meta.dirname!, "..", ".env"), "utf-8");
-for (const line of envFile.split("\n")) {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith("#")) continue;
-  const eq = trimmed.indexOf("=");
-  if (eq > 0) {
-    const key = trimmed.slice(0, eq).trim();
-    const value = trimmed.slice(eq + 1).trim();
-    if (!process.env[key]) process.env[key] = value;
-  }
+// 加载 .env (三级优先级)
+await loadEnv();
+
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 const client = new OpenAI({
@@ -109,7 +106,7 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   return parts.join("\n");
 }
 
-async function callLLM(systemPrompt: string, userContent: string): Promise<string> {
+async function callLLM(systemPrompt: string, userContent: string): Promise<{ content: string; usage: TokenUsage }> {
   const response = await client.chat.completions.create({
     model: MODEL,
     messages: [
@@ -120,8 +117,14 @@ async function callLLM(systemPrompt: string, userContent: string): Promise<strin
     temperature: TEMPERATURE,
   });
 
-  const raw = response.choices[0]?.message?.content ?? "";
-  return stripPreamble(raw);
+  const content = response.choices[0]?.message?.content ?? "";
+  const usage: TokenUsage = {
+    promptTokens: response.usage?.prompt_tokens ?? 0,
+    completionTokens: response.usage?.completion_tokens ?? 0,
+    totalTokens: response.usage?.total_tokens ?? 0,
+  };
+
+  return { content: stripPreamble(content), usage };
 }
 
 // 使用 unified + remark-parse 校验 Markdown 结构
@@ -167,8 +170,9 @@ async function validateSpecStructure(
 export async function generateDocs(
   result: AnalysisResult,
   diagrams: DiagramFile[]
-): Promise<SpecDoc[]> {
+): Promise<{ docs: SpecDoc[]; totalUsage: TokenUsage }> {
   const docs: SpecDoc[] = [];
+  const totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   const specTypes = [
     { name: "overview", global: true },
@@ -183,7 +187,10 @@ export async function generateDocs(
     const template = await loadTemplate(spec.name);
     const analysis = formatAnalysisForLLM(result, spec.name);
 
-    const content = await callLLM(template, analysis);
+    const { content, usage } = await callLLM(template, analysis);
+    totalUsage.promptTokens += usage.promptTokens;
+    totalUsage.completionTokens += usage.completionTokens;
+    totalUsage.totalTokens += usage.totalTokens;
 
     // 5.9: 模板结构校验
     const validation = await validateSpecStructure(content, spec.name);
@@ -216,24 +223,30 @@ export async function generateDocs(
     ].join("\n");
 
     console.log(`  Generating ${svc.artifactId}/overview.md...`);
-    const svcOverview = await callLLM(await loadTemplate("overview"), svcContext);
+    const { content: svcContent, usage: svcUsage } = await callLLM(await loadTemplate("overview"), svcContext);
+    totalUsage.promptTokens += svcUsage.promptTokens;
+    totalUsage.completionTokens += svcUsage.completionTokens;
+    totalUsage.totalTokens += svcUsage.totalTokens;
 
     docs.push({
       filename: "overview.md",
-      content: svcOverview,
+      content: svcContent,
       path: `openspec/specs/${svc.artifactId}/overview.md`,
     });
 
     console.log(`  Generating ${svc.artifactId}/architecture.md...`);
-    const svcArch = await callLLM(await loadTemplate("architecture"), svcContext);
+    const { content: archContent, usage: archUsage } = await callLLM(await loadTemplate("architecture"), svcContext);
+    totalUsage.promptTokens += archUsage.promptTokens;
+    totalUsage.completionTokens += archUsage.completionTokens;
+    totalUsage.totalTokens += archUsage.totalTokens;
 
     docs.push({
       filename: "architecture.md",
-      content: svcArch,
+      content: archContent,
       path: `openspec/specs/${svc.artifactId}/architecture.md`,
     });
   }
 
   console.log(`  Generated ${docs.length} spec documents`);
-  return docs;
+  return { docs, totalUsage };
 }
