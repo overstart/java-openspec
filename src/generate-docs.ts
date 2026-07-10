@@ -114,8 +114,13 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   }
 
   if (templateName === "overview") {
-    parts.push(`## 各服务 Controller 统计`);
+    parts.push(`## 各服务分析`);
     for (const [name, analysis] of Object.entries(result.serviceAnalyses)) {
+      parts.push(`- ${name}: ${analysis?.controllers.length ?? 0} Controllers, ${analysis?.services.length ?? 0} Services`);
+      if (analysis?.feignClients.length) {
+        parts.push(`  Feign: ${analysis.feignClients.map(f => `${f.className}→${f.targetService}`).join(", ")}`);
+      }
+    }
       parts.push(`- ${name}: ${analysis.controllers.length} Controllers`);
     }
     parts.push(``);
