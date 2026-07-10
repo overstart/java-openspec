@@ -121,8 +121,6 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
         parts.push(`  Feign: ${analysis.feignClients.map(f => `${f.className}→${f.targetService}`).join(", ")}`);
       }
     }
-      parts.push(`- ${name}: ${analysis.controllers.length} Controllers`);
-    }
     parts.push(``);
   }
 
