@@ -26,36 +26,7 @@ const MODEL = process.env.LLM_MODEL ?? "deepseek-v4-flash";
 const MAX_TOKENS = parseInt(process.env.LLM_MAX_TOKENS ?? "8192", 10);
 const TEMPERATURE = parseFloat(process.env.LLM_TEMPERATURE ?? "0.3");
 
-async function loadTemplate(name: string): Promise<string> {
-  const path = join(import.meta.dirname!, "..", "templates", `${name}.md`);
-  return readFile(path, "utf-8");
-}
-
-async function loadSpecTemplate(name: string): Promise<Record<string, unknown>> {
-  const path = join(import.meta.dirname!, "..", "spec-templates", `${name}.json`);
-  return JSON.parse(await readFile(path, "utf-8"));
-}
-
-function formatAnalysisForLLM(result: AnalysisResult, templateName: string): string {
-  const { projectInfo, globalPatterns, securityInfo } = result;
-
-  const parts: string[] = [];
-
-  parts.push(`## 项目信息`);
-  parts.push(`- GroupId: ${projectInfo.groupId}`);
-  parts.push(`- ArtifactId: ${projectInfo.artifactId}`);
-  parts.push(`- 服务模块: ${projectInfo.serviceModules.map((m) => m.artifactId).join(", ")}`);
-  parts.push(`- 公共库模块: ${projectInfo.libraryModules.map((m) => m.artifactId).join(", ")}`);
-
-  // 预建技术栈表格（从 pom.xml 直接提取，不经 LLM）
-  if (projectInfo.serviceModules.length > 0) {
-    const first = projectInfo.serviceModules[0]!;
-    const table = buildTechStackTable(first.dependencyVersions);
-    if (table) parts.push(table);
-  }
-  parts.push(``);
-
-  // 技术栈静态映射：pom.xml 属性 key → 技术名 + 用途
+// 技术栈静态映射：pom.xml 属性 key → 技术名 + 用途
 const TECH_STACK: Record<string, { tech: string; purpose: string }> = {
   "spring-boot.version": { tech: "Spring Boot", purpose: "Web 应用框架" },
   "spring-cloud.version": { tech: "Spring Cloud", purpose: "微服务治理" },
@@ -98,6 +69,36 @@ function buildTechStackTable(versions: Record<string, string>): string {
     ...rows,
   ].join("\n");
 }
+
+async function loadTemplate(name: string): Promise<string> {
+  const path = join(import.meta.dirname!, "..", "templates", `${name}.md`);
+  return readFile(path, "utf-8");
+}
+
+async function loadSpecTemplate(name: string): Promise<Record<string, unknown>> {
+  const path = join(import.meta.dirname!, "..", "spec-templates", `${name}.json`);
+  return JSON.parse(await readFile(path, "utf-8"));
+}
+
+function formatAnalysisForLLM(result: AnalysisResult, templateName: string): string {
+  const { projectInfo, globalPatterns, securityInfo } = result;
+
+  const parts: string[] = [];
+
+  parts.push(`## 项目信息`);
+  parts.push(`- GroupId: ${projectInfo.groupId}`);
+  parts.push(`- ArtifactId: ${projectInfo.artifactId}`);
+  parts.push(`- 服务模块: ${projectInfo.serviceModules.map((m) => m.artifactId).join(", ")}`);
+  parts.push(`- 公共库模块: ${projectInfo.libraryModules.map((m) => m.artifactId).join(", ")}`);
+
+  // 预建技术栈表格（从 pom.xml 直接提取，不经 LLM）
+  if (projectInfo.serviceModules.length > 0) {
+    const first = projectInfo.serviceModules[0]!;
+    const table = buildTechStackTable(first.dependencyVersions);
+    if (table) parts.push(table);
+  }
+  parts.push(``);
+
   parts.push(``);
 
   if (templateName === "coding-style" || templateName === "overview") {
