@@ -50,6 +50,7 @@ export async function pipeline(
 
   console.log("java-openspec v0.1.0");
   console.log(`Target: ${projectPath}`);
+  console.log(`Store:  ${resolve(projectPath, "..")}/${projectPath.split("/").pop()}-specs`);
   if (options.config) console.log(`Config: ${options.config}`);
   console.log("");
 
@@ -87,7 +88,6 @@ export async function pipeline(
     // 5. create-store
     console.log("[5/6] Creating OpenSpec store...");
     const storePath = await createStore(analysisResult, docs, diagrams, options);
-    console.log(`  Store: ${storePath}`);
 
     // 6. done
     console.log("[6/6] Done!");
