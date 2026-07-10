@@ -21,12 +21,11 @@ export async function createStore(
   // 6.1: 使用 openspec store setup 创建骨架
   console.log(`  Creating store at ${storePath}...`);
   const storeId = `${artifactId}-specs`;
-  const setupCmd = `openspec store setup ${storeId} --path "${storePath}" --no-init-git`;
-  runCommand(setupCmd);
+  runCommand(["openspec", "store", "setup", storeId, "--path", storePath, "--no-init-git"]);
 
   // 确保目录存在
-  const specsDir = join(storePath, "openspec", "specs");
-  const diagramsDir = join(specsDir, "diagrams");
+  const docsDir = join(storePath, "openspec", "docs");
+  const diagramsDir = join(docsDir, "diagrams");
   await mkdir(diagramsDir, { recursive: true });
 
   // 6.2: 写入 spec 文件

@@ -96,12 +96,12 @@ export async function pipeline(
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`\nCompleted in ${elapsed}s`);
 
-    // Token 消费报告
-    const model = process.env.LLM_MODEL ?? "unknown";
-    console.log(formatTokenReport(model, totalUsage));
-
     const report = generateReport(analysisResult, docs, diagrams, storePath);
     console.log(report);
+
+    // Token 消费报告 (最后输出)
+    const model = process.env.LLM_MODEL ?? "unknown";
+    console.log(formatTokenReport(model, totalUsage));
   } catch (error) {
     console.error("\nError:", error instanceof Error ? error.message : String(error));
     console.error("Pipeline failed. Check the error above for details.");

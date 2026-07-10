@@ -198,7 +198,8 @@ async function analyzeModule(
 }
 
 function buildDependencyGraph(
-  modules: MavenModule[]
+  modules: MavenModule[],
+  groupId: string
 ): Record<string, string[]> {
   const graph: Record<string, string[]> = {};
   for (const mod of modules) {
@@ -243,6 +244,6 @@ export async function detectProject(
     modules,
     serviceModules,
     libraryModules,
-    dependencyGraph: buildDependencyGraph(modules),
+    dependencyGraph: buildDependencyGraph(modules, groupId),
   };
 }
