@@ -48,9 +48,10 @@ export async function pipeline(
 ): Promise<void> {
   const startTime = Date.now();
 
+  const absProjectPath = resolve(projectPath);
   console.log("java-openspec v0.1.0");
-  console.log(`Target: ${projectPath}`);
-  console.log(`Store:  ${resolve(projectPath, "..")}/${projectPath.split("/").pop()}-specs`);
+  console.log(`Target: ${absProjectPath}`);
+  console.log(`Store:  ${resolve(absProjectPath, "..")}/${absProjectPath.split("/").pop()}-specs`);
   if (options.config) console.log(`Config: ${options.config}`);
   console.log("");
 
@@ -60,14 +61,14 @@ export async function pipeline(
     if (options.config) {
       // 8.3: 使用配置文件，跳过 Maven 检测
       const config = await loadConfig(options.config);
-      projectInfo = buildProjectInfoFromConfig(config, projectPath);
+      projectInfo = buildProjectInfoFromConfig(config, absProjectPath);
       console.log(
         `[1/6] Loaded config: ${projectInfo.serviceModules.length} services`
       );
     } else {
       // 8.4: 原有行为 - 自动检测 Maven 多模块项目
       console.log("[1/6] Detecting project structure...");
-      projectInfo = await detectProject(projectPath);
+      projectInfo = await detectProject(absProjectPath);
       console.log(
         `  Found ${projectInfo.serviceModules.length} services, ${projectInfo.libraryModules.length} libraries`
       );
