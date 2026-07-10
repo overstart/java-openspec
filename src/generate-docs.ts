@@ -26,39 +26,9 @@ const MODEL = process.env.LLM_MODEL ?? "deepseek-v4-flash";
 const MAX_TOKENS = parseInt(process.env.LLM_MAX_TOKENS ?? "8192", 10);
 const TEMPERATURE = parseFloat(process.env.LLM_TEMPERATURE ?? "0.3");
 
-// 从 artifactId 自动推导技术名
-function deriveTechName(artifactId: string): string {
-  // 去掉常见后缀
-  let name = artifactId
-    .replace(/-spring-boot-starter$/, "")
-    .replace(/-spring-boot3-starter$/, "")
-    .replace(/-spring-boot-3-starter$/, "")
-    .replace(/-starter$/, "")
-    .replace(/-spring-boot-starter-web$/, " Web")
-    .replace(/-spring-boot-starter-actuator$/, " Actuator")
-    .replace(/-spring-boot-starter-aop$/, " AOP")
-    .replace(/-spring-boot-starter-test$/, " Test")
-    .replace(/-spring-boot-starter-data-redis$/, " Data Redis")
-    .replace(/-spring-boot-starter-amqp$/, " AMQP")
-    .replace(/-spring-boot-starter$/, "");
-
-  // 去掉 vendor 前缀
-  name = name
-    .replace(/^spring-cloud-starter-alibaba-/i, "Spring Cloud Alibaba ")
-    .replace(/^spring-cloud-starter-/i, "Spring Cloud ")
-    .replace(/^spring-boot-starter-/i, "Spring Boot ")
-    .replace(/^spring-boot-/i, "Spring Boot ");
-
-  // 转大驼峰
-  return name
-    .split("-")
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
-}
-
 // 从 pom.xml 的 dependencyManagement 自动构建技术栈表格
 function buildTechStackTable(versions: Record<string, string>): string {
-  // 过滤出有意义的依赖（排除内部模块、test scope 等）
+  // 过滤出有意义的依赖（排除内部模块、test scope、lombok 等）
   const skipPrefixes = ["com.macro.mall:", "org.projectlombok:", "org.springframework.boot:spring-boot-configuration-processor"];
   const entries = Object.entries(versions)
     .filter(([key]) => !skipPrefixes.some(p => key.startsWith(p)))
@@ -68,13 +38,12 @@ function buildTechStackTable(versions: Record<string, string>): string {
 
   const rows = entries.map(([key, ver]) => {
     const artifactId = key.split(":")[1] ?? key;
-    const tech = deriveTechName(artifactId);
-    return `| ${tech} | ${ver} | |`;
+    return `| ${artifactId} | ${ver} | |`;
   });
 
   return [
     "### 技术栈",
-    "| 技术 | 版本 | 用途 |",
+    "| 依赖 | 版本 | 用途 |",
     "|------|------|------|",
     ...rows,
   ].join("\n");
