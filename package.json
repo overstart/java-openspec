@@ -1,0 +1,33 @@
+{
+  "name": "java-openspec",
+  "version": "0.1.0",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "java-openspec": "src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/js-yaml": "^4.0.9",
+    "@types/xml2js": "^0.4.14"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "dotenv": "^17.4.2",
+    "js-yaml": "^5.2.1",
+    "mermaid": "^11.16.0",
+    "openai": "^6.46.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "tsx": "^4.23.0",
+    "unified": "^11.0.5",
+    "xml2js": "^0.6.2"
+  }
+}
