@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+.opencode/
+bun.lock
+tsconfig.json
+*.log
+node_modules/

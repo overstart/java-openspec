@@ -1,13 +1,41 @@
 {
   "name": "java-openspec",
   "version": "0.1.0",
-  "module": "src/index.ts",
+  "description": "从 Java Spring Cloud 项目自动生成 OpenSpec store 的 CLI 工具",
   "type": "module",
   "bin": {
-    "java-openspec": "src/index.ts"
+    "java-openspec": "dist/index.js"
   },
+  "files": [
+    "dist/",
+    "templates/",
+    "spec-templates/",
+    "README.md",
+    ".env.example"
+  ],
   "scripts": {
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "java",
+    "spring-cloud",
+    "openspec",
+    "spec",
+    "code-analysis",
+    "mermaid",
+    "documentation",
+    "cli"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/overstart/java-openspec.git"
+  },
+  "author": "overstart",
+  "engines": {
+    "bun": ">=1.0.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -15,6 +43,7 @@
     "@types/xml2js": "^0.4.14"
   },
   "peerDependencies": {
+    "bun": ">=1.0.0",
     "typescript": "^5"
   },
   "dependencies": {
