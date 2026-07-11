@@ -11,6 +11,7 @@
     "templates/",
     "spec-templates/",
     "README.md",
+    "README.zh-CN.md",
     ".env.example"
   ],
   "scripts": {

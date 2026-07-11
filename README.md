@@ -1,89 +1,91 @@
 # java-openspec
 
-从 Java Spring Cloud 项目自动生成 OpenSpec store 的 CLI 工具。
+[中文文档](README.zh-CN.md)
 
-## 功能
+A CLI tool that auto-generates OpenSpec stores from Java Spring Cloud projects.
 
-- 自动检测 Maven 多模块项目中的 Spring Boot 微服务模块
-- 基于 CodeGraph AST 分析提取项目结构、命名规范、代码模式
-- 使用 LLM 生成规范文档（项目总览、编码规范、架构规范、安全规范）
-- 使用 Mermaid 生成 C4 架构图 + 业务时序图
-- 输出为 OpenSpec 1.5.0 store，自动注册
+## Features
 
-## 前置条件
+- Auto-detect Spring Boot microservice modules from Maven multi-module projects
+- Extract project structure, naming conventions, and code patterns via CodeGraph AST analysis
+- Generate spec documents using LLM (overview, coding-style, architecture, security)
+- Generate C4 architecture diagrams + sequence diagrams using Mermaid
+- Output as OpenSpec 1.5.0 store with automatic registration
 
-| 工具 | 最低版本 | 用途 | 检查命令 |
-|------|---------|------|---------|
-| [Bun](https://bun.sh) | 1.0 | 运行时 | `bun --version` |
-| [CodeGraph](https://github.com/nicholasxuu/codegraph) | 1.3 | Java AST 分析 | `codegraph --version` |
-| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.5 | Store 创建与注册 | `openspec --version` |
+## Prerequisites
 
-### 安装 CodeGraph
+| Tool | Min Version | Purpose | Check Command |
+|------|-------------|---------|---------------|
+| [Bun](https://bun.sh) | 1.0 | Runtime | `bun --version` |
+| [CodeGraph](https://github.com/nicholasxuu/codegraph) | 1.3 | Java AST analysis | `codegraph --version` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.5 | Store creation & registration | `openspec --version` |
+
+### Install CodeGraph
 
 ```bash
-# 安装后需对目标项目执行 codegraph init 建立索引
+# After installation, run codegraph init on the target project to build the index
 codegraph --version
 ```
 
-### 安装 OpenSpec
+### Install OpenSpec
 
 ```bash
 npm install -g @fission-ai/openspec@latest
 openspec --version
 ```
 
-## 安装
+## Installation
 
 ```bash
 cd ~/gitrepo/java-openspec
 bun install
 
-# 全局安装 (可选，安装后可直接使用 java-openspec 命令)
+# Global install (optional, enables java-openspec command directly)
 bun link
 ```
 
-## 配置 LLM
+## LLM Configuration
 
-`.env` 文件按以下优先级查找：
+`.env` file is searched in priority order:
 
-1. `$JAVA_OPENSPEC_ENV` — 显式指定路径
-2. `$PWD/.env` — 当前工作目录
-3. `~/.config/java-openspec/.env` — XDG 全局配置
+1. `$JAVA_OPENSPEC_ENV` - Explicit path
+2. `$PWD/.env` - Current working directory
+3. `~/.config/java-openspec/.env` - XDG global config
 
 ```bash
-# 全局配置 (推荐)
+# Global config (recommended)
 mkdir -p ~/.config/java-openspec
 cp .env.example ~/.config/java-openspec/.env
-# 编辑 ~/.config/java-openspec/.env，填入 API Key
+# Edit ~/.config/java-openspec/.env with your API key
 ```
 
-默认使用 OpenAI API 格式，兼容任何 OpenAI-compatible 服务。
+Uses OpenAI API format by default, compatible with any OpenAI-compatible service.
 
 ```bash
-# .env 示例 — OpenAI
+# .env example - OpenAI
 OPENAI_API_KEY=sk-xxx
 LLM_MODEL=gpt-4o-mini
 LLM_BASE_URL=https://api.openai.com/v1
 
-# .env 示例 — 火山引擎 Ark
+# .env example - Volcengine Ark
 # OPENAI_API_KEY=your-ark-key
 # LLM_MODEL=deepseek-v4-flash
 # LLM_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
 ```
 
-## 用法
+## Usage
 
-`bun link` 后可直接使用 `java-openspec` 命令，否则用 `bun run src/index.ts`。
+After `bun link`, use `java-openspec` directly. Otherwise use `bun run src/index.ts`.
 
-### 单项目模式
+### Single Project Mode
 
 ```bash
 java-openspec init /path/to/mall-swarm
 ```
 
-### 多路径模式
+### Multi-Path Mode
 
-不同微服务分布在不同目录时，使用配置文件：
+When microservices are spread across different directories, use a config file:
 
 ```yaml
 # java-openspec.yml
@@ -97,61 +99,66 @@ services:
 java-openspec init /path/to/workspace --config java-openspec.yml
 ```
 
-## 输出
+## Output
 
 ```
 <project>-specs/
 ├── store.yaml
 └── openspec/
-    └── specs/
-        ├── overview.md           # 全局项目总览
-        ├── coding-style.md       # 全局编码规范
-        ├── architecture.md       # 全局架构规范
-        ├── security.md           # 全局安全规范
+    └── docs/
+        ├── overview.md           # Global project overview
+        ├── coding-style.md       # Global coding conventions
+        ├── architecture.md       # Global architecture spec
+        ├── security.md           # Global security spec
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
         │   ├── <service>-container.mmd   # C4 Container
-        │   └── <service>-flow.mmd        # 业务时序图
+        │   └── <service>-flow.mmd        # Business sequence diagram
         └── <service>/
-            ├── overview.md
             └── architecture.md
 ```
 
-## 工作流程
+## Pipeline
 
 ```
-detect → analyze → generate-diagrams → generate-docs → create-store → validate
+detect -> analyze -> generate-diagrams -> generate-docs -> create-store -> validate
 ```
 
-1. **detect** — 扫描 pom.xml，识别微服务模块与公共库模块
-2. **analyze** — CodeGraph 索引 + 文件扫描，提取命名模式、调用路径、安全模式
-3. **generate-diagrams** — Mermaid flowchart/sequenceDiagram 生成架构图
-4. **generate-docs** — LLM 根据分析结果 + 模板生成 spec 文档
-5. **create-store** — 调用 openspec CLI 创建 store 并注册
-6. **validate** — openspec store doctor 校验输出
+1. **detect** - Scan pom.xml, identify microservice modules vs library modules
+2. **analyze** - CodeGraph index + file scan, extract naming patterns, call paths, security patterns
+3. **generate-diagrams** - Mermaid flowchart/sequenceDiagram generation
+4. **generate-docs** - LLM generates spec documents from analysis + templates
+5. **create-store** - Call openspec CLI to create store and register
+6. **validate** - openspec store doctor validation
 
-## 项目结构
+## Project Structure
 
 ```
 src/
-├── index.ts              # CLI 入口
-├── pipeline.ts           # 主流程编排
-├── detect.ts             # Maven 项目检测
-├── analyze.ts            # CodeGraph 分析
-├── generate-diagrams.ts  # Mermaid 图表生成
-├── generate-docs.ts      # LLM 文档生成
-├── create-store.ts       # OpenSpec store 创建
-├── postprocess.ts        # LLM 输出后处理
-└── types.ts              # 类型定义
-templates/                # LLM prompt 模板
-spec-templates/           # Spec 结构校验 schema
+├── index.ts              # CLI entry point
+├── pipeline.ts           # Main pipeline orchestration
+├── detect.ts             # Maven project detection
+├── analyze.ts            # CodeGraph analysis
+├── generate-diagrams.ts  # Mermaid diagram generation
+├── generate-docs.ts      # LLM document generation
+├── create-store.ts       # OpenSpec store creation
+├── postprocess.ts        # LLM output post-processing
+├── env.ts                # .env loading
+├── pricing.ts            # Token cost estimation
+└── types.ts              # Type definitions
+templates/                # LLM prompt templates
+spec-templates/           # Spec structure validation schemas
 ```
 
-## 技术栈
+## Tech Stack
 
-- **运行时**: Bun + TypeScript
+- **Runtime**: Bun + TypeScript
 - **LLM**: OpenAI-compatible API (deepseek-v4-flash)
-- **分析**: CodeGraph + 文件扫描
-- **图表**: Mermaid (flowchart + sequenceDiagram)
-- **文档校验**: unified + remark-parse (Markdown AST)
-- **配置**: YAML (js-yaml)
+- **Analysis**: CodeGraph + file scanning
+- **Diagrams**: Mermaid (flowchart + sequenceDiagram)
+- **Validation**: unified + remark-parse (Markdown AST)
+- **Config**: YAML (js-yaml)
+
+## License
+
+Apache-2.0
