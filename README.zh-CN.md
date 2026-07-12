@@ -37,11 +37,14 @@ openspec --version
 ## 安装
 
 ```bash
-cd ~/gitrepo/java-openspec
-bun install
+# 通过 npm 安装
+npm install -g java-openspec
 
-# 全局安装 (可选，安装后可直接使用 java-openspec 命令)
-bun link
+# 或通过 Bun 安装
+bun add -g java-openspec
+
+# 验证
+java-openspec --version
 ```
 
 ## 配置 LLM
@@ -74,8 +77,6 @@ LLM_BASE_URL=https://api.openai.com/v1
 ```
 
 ## 用法
-
-`bun link` 后可直接使用 `java-openspec` 命令，否则用 `bun run src/index.ts`。
 
 ### 单项目模式
 
