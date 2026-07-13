@@ -91,6 +91,15 @@ export interface TokenUsage {
   totalTokens: number;
 }
 
+// LLM Provider 抽象接口
+export interface LLMProvider {
+  generate(systemPrompt: string, userContent: string): Promise<{
+    content: string;
+    usage: TokenUsage;
+  }>;
+  close?(): Promise<void>;
+}
+
 export interface FeignClientInfo {
   className: string;
   targetService: string;

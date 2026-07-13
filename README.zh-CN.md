@@ -51,9 +51,9 @@ java-openspec --version
 
 `.env` 文件按以下优先级查找：
 
-1. `$JAVA_OPENSPEC_ENV` — 显式指定路径
-2. `$PWD/.env` — 当前工作目录
-3. `~/.config/java-openspec/.env` — XDG 全局配置
+1. `$JAVA_OPENSPEC_ENV` - 显式指定路径
+2. `$PWD/.env` - 当前工作目录
+3. `~/.config/java-openspec/.env` - XDG 全局配置
 
 ```bash
 # 全局配置 (推荐)
@@ -62,19 +62,58 @@ cp .env.example ~/.config/java-openspec/.env
 # 编辑 ~/.config/java-openspec/.env，填入 API Key
 ```
 
-默认使用 OpenAI API 格式，兼容任何 OpenAI-compatible 服务。
+支持两种 LLM 后端：
+
+### OpenAI 模式（默认）
+
+使用 OpenAI API 格式，兼容任何 OpenAI-compatible 服务。需要 `OPENAI_API_KEY`。
 
 ```bash
-# .env 示例 — OpenAI
+# .env 示例 - OpenAI
 OPENAI_API_KEY=sk-xxx
 LLM_MODEL=gpt-4o-mini
 LLM_BASE_URL=https://api.openai.com/v1
 
-# .env 示例 — 火山引擎 Ark
+# .env 示例 - 火山引擎 Ark
 # OPENAI_API_KEY=your-ark-key
 # LLM_MODEL=deepseek-v4-flash
 # LLM_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
 ```
+
+### ACP 模式（无需 API key）
+
+当 `OPENAI_API_KEY` 未设置时，java-openspec 可通过 [ACP (Agent Client Protocol)](https://agentclientprotocol.com) 连接已有的 AI agent。agent 使用自己的 LLM 凭证处理调用，无需额外 API key。
+
+```bash
+# .env 示例 - ACP 模式
+# 首推：opencode acp（需已安装 opencode）
+ACP_AGENT_CMD=opencode acp
+
+# 其他兼容 agent：
+# ACP_AGENT_CMD=claude-code-acp
+# ACP_AGENT_CMD=gemini --experimental-acp
+```
+
+ACP 模式行为：
+- **权限控制**：agent 可以读文件（`fs/read_text_file`），但不能写文件或执行终端命令
+- **Token 报告**：显示 `N/A (ACP mode)`，因为 agent 不一定返回 token 用量
+- **并发**：使用多 session 并行（一个 agent 进程，多个 ACP session）
+
+## LLM Provider 架构
+
+```mermaid
+flowchart TB
+    GD["generateDocs()"] --> CP{"createProvider()"}
+
+    CP -->|"OPENAI_API_KEY 存在"| OAI["OpenAIProvider<br/>HTTP API + API key"]
+    CP -->|"无 key, ACP_AGENT_CMD 存在"| ACP["ACPProvider<br/>stdio + agent 子进程"]
+    CP -->|"都没有"| ERR["Error: 未配置 LLM"]
+
+    OAI -->|"4+N 并行 HTTP 请求"| API["OpenAI-compatible API"]
+    ACP -->|"4+N 并行 session"| AGENT["ACP Agent<br/>opencode acp / claude-code-acp / ..."]
+```
+
+Provider 抽象层（`src/providers/`）将 LLM 调用与 pipeline 解耦。`generate-docs.ts` 调用 `createProvider()` 根据环境变量选择后端，pipeline 和其他模块完全不变。
 
 ## 用法
 
@@ -143,17 +182,24 @@ src/
 ├── analyze.ts            # CodeGraph 分析
 ├── generate-diagrams.ts  # Mermaid 图表生成
 ├── generate-docs.ts      # LLM 文档生成
+├── providers/            # LLM provider 抽象层
+│   ├── index.ts          # createProvider() 选择逻辑
+│   ├── openai-provider.ts # OpenAI 后端
+│   └── acp-provider.ts   # ACP (Agent Client Protocol) 后端
 ├── create-store.ts       # OpenSpec store 创建
 ├── postprocess.ts        # LLM 输出后处理
+├── env.ts                # .env 加载
+├── pricing.ts            # Token 费用估算
 └── types.ts              # 类型定义
 templates/                # LLM prompt 模板
 spec-templates/           # Spec 结构校验 schema
+test/                     # 单元测试
 ```
 
 ## 技术栈
 
 - **运行时**: Bun + TypeScript
-- **LLM**: OpenAI-compatible API (deepseek-v4-flash)
+- **LLM**: OpenAI-compatible API 或 ACP (Agent Client Protocol)
 - **分析**: CodeGraph + 文件扫描
 - **图表**: Mermaid (flowchart + sequenceDiagram)
 - **文档校验**: unified + remark-parse (Markdown AST)

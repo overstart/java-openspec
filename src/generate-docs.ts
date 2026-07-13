@@ -1,24 +1,14 @@
-import OpenAI from "openai";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { AnalysisResult, SpecDoc, DiagramFile, TokenUsage } from "./types";
-import { stripPreamble } from "./postprocess";
 import { loadEnv } from "./env";
+import { createProvider } from "./providers";
 
 // 加载 .env (三级优先级)
 await loadEnv();
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY ?? (() => { throw new Error("LLM API key not found. Set OPENAI_API_KEY in .env or ~/.config/java-openspec/.env"); })(),
-  baseURL: process.env.LLM_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/coding/v3",
-});
-
-const MODEL = process.env.LLM_MODEL ?? "deepseek-v4-flash";
-const MAX_TOKENS = parseInt(process.env.LLM_MAX_TOKENS ?? "8192", 10);
-const TEMPERATURE = parseFloat(process.env.LLM_TEMPERATURE ?? "0.3");
 
 // 从 pom.xml 的 dependencyManagement 自动构建技术栈表格
 function buildTechStackTable(versions: Record<string, string>): string {
@@ -121,27 +111,6 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   return parts.join("\n");
 }
 
-async function callLLM(systemPrompt: string, userContent: string): Promise<{ content: string; usage: TokenUsage }> {
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
-    ],
-    max_tokens: MAX_TOKENS,
-    temperature: TEMPERATURE,
-  });
-
-  const content = response.choices[0]?.message?.content ?? "";
-  const usage: TokenUsage = {
-    promptTokens: response.usage?.prompt_tokens ?? 0,
-    completionTokens: response.usage?.completion_tokens ?? 0,
-    totalTokens: response.usage?.total_tokens ?? 0,
-  };
-
-  return { content: stripPreamble(content), usage };
-}
-
 // 使用 unified + remark-parse 校验 Markdown 结构
 async function validateSpecStructure(
   content: string,
@@ -186,6 +155,7 @@ export async function generateDocs(
   result: AnalysisResult,
   diagrams: DiagramFile[]
 ): Promise<{ docs: SpecDoc[]; totalUsage: TokenUsage }> {
+  const provider = createProvider();
   const docs: SpecDoc[] = [];
   const totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
@@ -202,7 +172,7 @@ export async function generateDocs(
       console.log(`  Generating ${name}.md...`);
       const template = await loadTemplate(name);
       const analysis = formatAnalysisForLLM(result, name);
-      const { content, usage } = await callLLM(template, analysis);
+      const { content, usage } = await provider.generate(template, analysis);
       const validation = await validateSpecStructure(content, name);
       if (!validation.valid) {
         console.warn(`  ⚠ ${name}.md validation warnings:`, validation.warnings);
@@ -242,7 +212,7 @@ export async function generateDocs(
 
       console.log(`  Generating ${svc.artifactId}/architecture.md...`);
       const template = await loadTemplate("architecture");
-      const { content, usage } = await callLLM(template, svcContext);
+      const { content, usage } = await provider.generate(template, svcContext);
       return { artifactId: svc.artifactId, content, usage };
     })
   );
@@ -256,6 +226,7 @@ export async function generateDocs(
     });
   }
 
+  await provider.close?.();
   console.log(`  Generated ${docs.length} spec documents`);
   return { docs, totalUsage };
 }

@@ -62,7 +62,11 @@ cp .env.example ~/.config/java-openspec/.env
 # Edit ~/.config/java-openspec/.env with your API key
 ```
 
-Uses OpenAI API format by default, compatible with any OpenAI-compatible service.
+Two LLM backends are supported:
+
+### OpenAI Mode (default)
+
+Uses OpenAI API format, compatible with any OpenAI-compatible service. Requires `OPENAI_API_KEY`.
 
 ```bash
 # .env example - OpenAI
@@ -75,6 +79,41 @@ LLM_BASE_URL=https://api.openai.com/v1
 # LLM_MODEL=deepseek-v4-flash
 # LLM_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
 ```
+
+### ACP Mode (no API key needed)
+
+When `OPENAI_API_KEY` is not set, java-openspec can connect to an existing AI agent via [ACP (Agent Client Protocol)](https://agentclientprotocol.com). The agent handles LLM calls with its own credentials.
+
+```bash
+# .env example - ACP mode
+# Recommended: opencode acp (if opencode is installed)
+ACP_AGENT_CMD=opencode acp
+
+# Other compatible agents:
+# ACP_AGENT_CMD=claude-code-acp
+# ACP_AGENT_CMD=gemini --experimental-acp
+```
+
+ACP mode behavior:
+- **Permission control**: Agent can read files (`fs/read_text_file`) but cannot write files or run terminal commands
+- **Token report**: Shows `N/A (ACP mode)` since token usage is not always reported by the agent
+- **Concurrency**: Uses multi-session parallelism (one agent process, multiple ACP sessions)
+
+## LLM Provider Architecture
+
+```mermaid
+flowchart TB
+    GD["generateDocs()"] --> CP{"createProvider()"}
+
+    CP -->|"OPENAI_API_KEY set"| OAI["OpenAIProvider<br/>HTTP API + API key"]
+    CP -->|"No key, ACP_AGENT_CMD set"| ACP["ACPProvider<br/>stdio + agent subprocess"]
+    CP -->|"Neither set"| ERR["Error: No LLM provider"]
+
+    OAI -->|"4+N parallel HTTP requests"| API["OpenAI-compatible API"]
+    ACP -->|"4+N parallel sessions"| AGENT["ACP Agent<br/>opencode acp / claude-code-acp / ..."]
+```
+
+The provider abstraction (`src/providers/`) decouples LLM calls from the pipeline. `generate-docs.ts` calls `createProvider()` which selects the backend based on environment variables. The pipeline and all other modules remain unchanged.
 
 ## Usage
 
@@ -142,6 +181,10 @@ src/
 ├── analyze.ts            # CodeGraph analysis
 ├── generate-diagrams.ts  # Mermaid diagram generation
 ├── generate-docs.ts      # LLM document generation
+├── providers/            # LLM provider abstraction
+│   ├── index.ts          # createProvider() selection logic
+│   ├── openai-provider.ts # OpenAI backend
+│   └── acp-provider.ts   # ACP (Agent Client Protocol) backend
 ├── create-store.ts       # OpenSpec store creation
 ├── postprocess.ts        # LLM output post-processing
 ├── env.ts                # .env loading
@@ -149,12 +192,13 @@ src/
 └── types.ts              # Type definitions
 templates/                # LLM prompt templates
 spec-templates/           # Spec structure validation schemas
+test/                     # Unit tests
 ```
 
 ## Tech Stack
 
 - **Runtime**: Bun + TypeScript
-- **LLM**: OpenAI-compatible API (deepseek-v4-flash)
+- **LLM**: OpenAI-compatible API or ACP (Agent Client Protocol)
 - **Analysis**: CodeGraph + file scanning
 - **Diagrams**: Mermaid (flowchart + sequenceDiagram)
 - **Validation**: unified + remark-parse (Markdown AST)

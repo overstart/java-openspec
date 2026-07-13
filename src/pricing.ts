@@ -20,6 +20,22 @@ export function estimateCost(model: string, usage: TokenUsage): number {
 }
 
 export function formatTokenReport(model: string, usage: TokenUsage): string {
+  // ACP 模式下 token 用量为 0（协议不返回或 agent 未提供），显示 N/A
+  if (usage.totalTokens === 0) {
+    const lines = [
+      "",
+      "┌─────────────────────────────────────┐",
+      "│  Token 消费                          │",
+      `│  Model:   ${model.padEnd(28)}│`,
+      "│  Input:   N/A (ACP mode)             │",
+      "│  Output:  N/A (ACP mode)             │",
+      "│  Total:   N/A (ACP mode)             │",
+      "│  Est.Cost: N/A                       │",
+      "└─────────────────────────────────────┘",
+    ];
+    return lines.join("\n");
+  }
+
   const cost = estimateCost(model, usage);
   const lines = [
     "",
