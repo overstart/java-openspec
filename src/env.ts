@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -41,6 +42,22 @@ export async function loadEnv(): Promise<Record<string, string>> {
       return env;
     } catch {
       // 文件不存在，继续下一个
+    }
+  }
+
+  // 都没找到 - 自动从模板创建配置
+  const configDir = join(homedir(), ".config", "java-openspec");
+  const envPath = join(configDir, ".env");
+  if (!existsSync(envPath)) {
+    try {
+      const templatePath = join(import.meta.dirname ?? ".", "..", ".env.example");
+      const template = await readFile(templatePath, "utf-8");
+      await mkdir(configDir, { recursive: true });
+      await writeFile(envPath, template);
+      console.log(`\n  已创建 ${envPath}，请编辑后重新运行。\n`);
+      process.exit(0);
+    } catch {
+      // 创建失败，静默跳过
     }
   }
 
