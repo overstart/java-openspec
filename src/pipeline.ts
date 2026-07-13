@@ -49,7 +49,7 @@ export async function pipeline(
   const startTime = Date.now();
 
   const absProjectPath = resolve(projectPath);
-  console.log("java-openspec v0.1.0");
+  console.log("java-openspec v0.2.0");
   console.log(`Target: ${absProjectPath}`);
   console.log(`Store:  ${resolve(absProjectPath, "..")}/${absProjectPath.split("/").pop()}-specs`);
   if (options.config) console.log(`Config: ${options.config}`);

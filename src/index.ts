@@ -7,7 +7,7 @@ const program = new Command();
 program
   .name("java-openspec")
   .description("从 Java Spring Cloud 项目自动生成 OpenSpec store")
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .command("init")
