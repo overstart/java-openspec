@@ -35,6 +35,10 @@
     "url": "https://github.com/overstart/java-openspec.git"
   },
   "author": "overstart",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "engines": {
     "bun": ">=1.0.0"
   },
