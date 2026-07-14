@@ -1,0 +1,10 @@
+{
+  "requiredSections": ["Project Overview", "Service Overview", "Tech Stack", "Directory Structure"],
+  "requiredTables": ["Service Overview", "Tech Stack"],
+  "headingLevels": {
+    "Project Overview": 3,
+    "Service Overview": 3,
+    "Tech Stack": 3,
+    "Directory Structure": 3
+  }
+}

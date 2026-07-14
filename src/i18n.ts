@@ -1,12 +1,13 @@
 import { homedir } from "node:os";
 
 // 语言检测: LANG / LC_ALL / LANGUAGE 环境变量，zh 开头则中文
-const lang =
+const rawLang =
   process.env.LANG ??
   process.env.LC_ALL ??
   process.env.LANGUAGE ??
   "en";
-const isZh = lang.toLowerCase().startsWith("zh");
+const isZh = rawLang.toLowerCase().startsWith("zh");
+export const lang = isZh ? "zh" : "en";
 
 export interface Messages {
   // index.ts - CLI 帮助
@@ -89,6 +90,45 @@ export interface Messages {
   // no-LLM mode
   noLlmHeader: string;
   noLlmNotice: string;
+
+  // analysis data labels
+  lblProjectInfo: string;
+  lblTechStack: string;
+  lblNamingPatterns: string;
+  lblModuleDeps: string;
+  lblSecurityInfo: string;
+  lblServiceAnalysis: string;
+  lblGroupId: string;
+  lblArtifactId: string;
+  lblServiceModules: string;
+  lblLibraryModules: string;
+  lblController: string;
+  lblServiceLabel: string;
+  lblBusinessPrefix: string;
+  lblDtoSuffix: string;
+  lblEntitySuffix: string;
+  lblPackageStructure: string;
+  lblEncryptionAlgo: string;
+  lblEncryptionLib: string;
+  lblAuthFramework: string;
+  lblAuthAnnotation: string;
+  lblAuthProgrammatic: string;
+  lblMultiAccount: string;
+  lblSensitiveFields: string;
+  // service context labels
+  lblService: string;
+  lblPath: string;
+  lblControllers: string;
+  lblControllerList: string;
+  lblServices: string;
+  lblFeignClients: string;
+  lblPackageTree: string;
+  lblDependencies: string;
+  lblDiagrams: string;
+  // validation warnings
+  lblMissingSection: string;
+  lblMissingTable: string;
+  lblNotDetected: string;
 }
 
 const en: Messages = {
@@ -169,6 +209,42 @@ const en: Messages = {
 
   noLlmHeader: "<!-- Generated without LLM, contains CodeGraph analysis data only -->",
   noLlmNotice: "\n  \u26a0 Specs generated without LLM. Documents contain CodeGraph analysis data only.\n  Configure OPENAI_API_KEY or ACP_AGENT_CMD to regenerate with LLM.\n",
+
+  lblProjectInfo: "## Project Info",
+  lblTechStack: "### Tech Stack",
+  lblNamingPatterns: "## Naming Patterns",
+  lblModuleDeps: "## Module Dependencies",
+  lblSecurityInfo: "## Security Info",
+  lblServiceAnalysis: "## Service Analysis",
+  lblGroupId: "- GroupId",
+  lblArtifactId: "- ArtifactId",
+  lblServiceModules: "- Service modules",
+  lblLibraryModules: "- Library modules",
+  lblController: "- Controller",
+  lblServiceLabel: "- Service",
+  lblBusinessPrefix: "- Business prefixes",
+  lblDtoSuffix: "- DTO suffixes",
+  lblEntitySuffix: "- Entity suffixes",
+  lblPackageStructure: "- Package structure",
+  lblEncryptionAlgo: "- Encryption algorithms",
+  lblEncryptionLib: "- Encryption libraries",
+  lblAuthFramework: "- Auth framework",
+  lblAuthAnnotation: "- Auth annotations",
+  lblAuthProgrammatic: "- Programmatic auth APIs",
+  lblMultiAccount: "- Multi-account system",
+  lblSensitiveFields: "- Sensitive fields",
+  lblService: "## Service:",
+  lblPath: "- Path:",
+  lblControllers: "- Controllers:",
+  lblControllerList: "- Controller list:",
+  lblServices: "- Services:",
+  lblFeignClients: "- Feign clients:",
+  lblPackageTree: "- Package structure:",
+  lblDependencies: "- Dependencies:",
+  lblDiagrams: "- Diagrams:",
+  lblMissingSection: "Missing required section:",
+  lblMissingTable: "Missing table, required:",
+  lblNotDetected: "Not detected",
 };
 
 const zh: Messages = {
@@ -249,6 +325,42 @@ const zh: Messages = {
 
   noLlmHeader: "<!-- 未经 LLM 生成，仅含 CodeGraph 分析数据 -->",
   noLlmNotice: "\n  ⚠ 本次生成未经 LLM 润色，spec 文档仅包含 CodeGraph 分析数据。\n  配置 OPENAI_API_KEY 或 ACP_AGENT_CMD 后可重新生成。\n",
+
+  lblProjectInfo: "## 项目信息",
+  lblTechStack: "### 技术栈",
+  lblNamingPatterns: "## 命名模式",
+  lblModuleDeps: "## 模块依赖",
+  lblSecurityInfo: "## 安全信息",
+  lblServiceAnalysis: "## 各服务分析",
+  lblGroupId: "- GroupId",
+  lblArtifactId: "- ArtifactId",
+  lblServiceModules: "- 服务模块",
+  lblLibraryModules: "- 公共库模块",
+  lblController: "- Controller",
+  lblServiceLabel: "- Service",
+  lblBusinessPrefix: "- 业务前缀",
+  lblDtoSuffix: "- DTO 后缀",
+  lblEntitySuffix: "- 实体后缀",
+  lblPackageStructure: "- 包结构",
+  lblEncryptionAlgo: "- 加密算法",
+  lblEncryptionLib: "- 加密库",
+  lblAuthFramework: "- 认证框架",
+  lblAuthAnnotation: "- 权限注解",
+  lblAuthProgrammatic: "- 编程式权限API",
+  lblMultiAccount: "- 双账户体系",
+  lblSensitiveFields: "- 敏感字段",
+  lblService: "## 服务:",
+  lblPath: "- 路径:",
+  lblControllers: "- Controllers:",
+  lblControllerList: "- Controller列表:",
+  lblServices: "- Services:",
+  lblFeignClients: "- Feign客户端:",
+  lblPackageTree: "- 包结构:",
+  lblDependencies: "- 依赖:",
+  lblDiagrams: "- 图表:",
+  lblMissingSection: "缺少必填章节:",
+  lblMissingTable: "缺少表格，需要",
+  lblNotDetected: "未检测到",
 };
 
 export const t = isZh ? zh : en;

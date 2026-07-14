@@ -1,0 +1,11 @@
+{
+  "requiredSections": ["Service Topology", "Inter-Service Communication", "Middleware Dependencies", "Architecture Diagrams", "Key Business Flows"],
+  "requiredTables": ["Middleware Dependencies"],
+  "headingLevels": {
+    "Service Topology": 3,
+    "Inter-Service Communication": 3,
+    "Middleware Dependencies": 3,
+    "Architecture Diagrams": 3,
+    "Key Business Flows": 3
+  }
+}

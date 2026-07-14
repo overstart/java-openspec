@@ -1,0 +1,10 @@
+{
+  "requiredSections": ["Encryption Algorithm Usage", "Sensitive Data Storage", "Authentication & Authorization", "Security Annotation Usage"],
+  "requiredTables": ["Encryption Algorithm Usage", "Sensitive Data Storage", "Security Annotation Usage"],
+  "headingLevels": {
+    "Encryption Algorithm Usage": 3,
+    "Sensitive Data Storage": 3,
+    "Authentication & Authorization": 3,
+    "Security Annotation Usage": 3
+  }
+}

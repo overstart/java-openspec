@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import type { AnalysisResult, SpecDoc, DiagramFile, TokenUsage } from "./types";
 import { loadEnv } from "./env";
 import { createProvider } from "./providers";
-import { t } from "./i18n";
+import { t, lang } from "./i18n";
 
 // 加载 .env (三级优先级)
 await loadEnv();
@@ -27,7 +27,7 @@ function buildTechStackTable(versions: Record<string, string>): string {
   });
 
   return [
-    "### 技术栈",
+    t.lblTechStack,
     "| 依赖 | 版本 | 用途 |",
     "|------|------|------|",
     ...rows,
@@ -35,12 +35,12 @@ function buildTechStackTable(versions: Record<string, string>): string {
 }
 
 async function loadTemplate(name: string): Promise<string> {
-  const path = join(import.meta.dirname!, "..", "templates", `${name}.md`);
+  const path = join(import.meta.dirname!, "..", "templates", lang, `${name}.md`);
   return readFile(path, "utf-8");
 }
 
 async function loadSpecTemplate(name: string): Promise<Record<string, unknown>> {
-  const path = join(import.meta.dirname!, "..", "spec-templates", `${name}.json`);
+  const path = join(import.meta.dirname!, "..", "spec-templates", lang, `${name}.json`);
   return JSON.parse(await readFile(path, "utf-8"));
 }
 
@@ -49,11 +49,11 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
 
   const parts: string[] = [];
 
-  parts.push(`## 项目信息`);
-  parts.push(`- GroupId: ${projectInfo.groupId}`);
-  parts.push(`- ArtifactId: ${projectInfo.artifactId}`);
-  parts.push(`- 服务模块: ${projectInfo.serviceModules.map((m) => m.artifactId).join(", ")}`);
-  parts.push(`- 公共库模块: ${projectInfo.libraryModules.map((m) => m.artifactId).join(", ")}`);
+  parts.push(t.lblProjectInfo);
+  parts.push(`${t.lblGroupId}: ${projectInfo.groupId}`);
+  parts.push(`${t.lblArtifactId}: ${projectInfo.artifactId}`);
+  parts.push(`${t.lblServiceModules}: ${projectInfo.serviceModules.map((m) => m.artifactId).join(", ")}`);
+  parts.push(`${t.lblLibraryModules}: ${projectInfo.libraryModules.map((m) => m.artifactId).join(", ")}`);
 
   // 预建技术栈表格（从 pom.xml 直接提取，不经 LLM）
   if (projectInfo.serviceModules.length > 0) {
@@ -66,18 +66,18 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   parts.push(``);
 
   if (templateName === "coding-style" || templateName === "overview") {
-    parts.push(`## 命名模式`);
-    parts.push(`- Controller: ${globalPatterns.namingPatterns[0]?.examples.join(", ") ?? "无"}`);
-    parts.push(`- Service: ${globalPatterns.namingPatterns[1]?.examples.join(", ") ?? "无"}`);
-    parts.push(`- 业务前缀: ${globalPatterns.businessPrefixes.join(", ")}`);
-    parts.push(`- DTO 后缀: ${globalPatterns.dtoSuffixes.join(", ")}`);
-    parts.push(`- 实体后缀: ${globalPatterns.entitySuffixes.join(", ")}`);
-    parts.push(`- 包结构: ${globalPatterns.packageStructure.join(", ")}`);
+    parts.push(t.lblNamingPatterns);
+    parts.push(`${t.lblController}: ${globalPatterns.namingPatterns[0]?.examples.join(", ") ?? t.lblNotDetected}`);
+    parts.push(`${t.lblServiceLabel}: ${globalPatterns.namingPatterns[1]?.examples.join(", ") ?? t.lblNotDetected}`);
+    parts.push(`${t.lblBusinessPrefix}: ${globalPatterns.businessPrefixes.join(", ")}`);
+    parts.push(`${t.lblDtoSuffix}: ${globalPatterns.dtoSuffixes.join(", ")}`);
+    parts.push(`${t.lblEntitySuffix}: ${globalPatterns.entitySuffixes.join(", ")}`);
+    parts.push(`${t.lblPackageStructure}: ${globalPatterns.packageStructure.join(", ")}`);
     parts.push(``);
   }
 
   if (templateName === "architecture" || templateName === "overview") {
-    parts.push(`## 模块依赖`);
+    parts.push(t.lblModuleDeps);
     for (const [mod, deps] of Object.entries(projectInfo.dependencyGraph)) {
       if (deps.length > 0) {
         parts.push(`- ${mod} → ${deps.join(", ")}`);
@@ -87,19 +87,19 @@ function formatAnalysisForLLM(result: AnalysisResult, templateName: string): str
   }
 
   if (templateName === "security") {
-    parts.push(`## 安全信息`);
-    parts.push(`- 加密算法: ${securityInfo.encryptionAlgorithms.join(", ") || "未检测到"}`);
-    parts.push(`- 加密库: ${securityInfo.encryptionLibraries.join(", ") || "未检测到"}`);
-    parts.push(`- 认证框架: ${securityInfo.authFramework}`);
-    parts.push(`- 权限注解: ${securityInfo.authAnnotations.join(", ") || "未检测到"}`);
-    parts.push(`- 编程式权限API: ${securityInfo.authProgrammaticAPIs.join(", ") || "未检测到"}`);
-    parts.push(`- 双账户体系: ${securityInfo.hasMultiAccount ? "是" : "否"}`);
-    parts.push(`- 敏感字段: ${securityInfo.sensitiveFields.join(", ") || "未检测到"}`);
+    parts.push(t.lblSecurityInfo);
+    parts.push(`${t.lblEncryptionAlgo}: ${securityInfo.encryptionAlgorithms.join(", ") || t.lblNotDetected}`);
+    parts.push(`${t.lblEncryptionLib}: ${securityInfo.encryptionLibraries.join(", ") || t.lblNotDetected}`);
+    parts.push(`${t.lblAuthFramework}: ${securityInfo.authFramework}`);
+    parts.push(`${t.lblAuthAnnotation}: ${securityInfo.authAnnotations.join(", ") || t.lblNotDetected}`);
+    parts.push(`${t.lblAuthProgrammatic}: ${securityInfo.authProgrammaticAPIs.join(", ") || t.lblNotDetected}`);
+    parts.push(`${t.lblMultiAccount}: ${securityInfo.hasMultiAccount ? "是" : "否"}`);
+    parts.push(`${t.lblSensitiveFields}: ${securityInfo.sensitiveFields.join(", ") || t.lblNotDetected}`);
     parts.push(``);
   }
 
   if (templateName === "overview") {
-    parts.push(`## 各服务分析`);
+    parts.push(t.lblServiceAnalysis);
     for (const [name, analysis] of Object.entries(result.serviceAnalyses)) {
       parts.push(`- ${name}: ${analysis?.controllers.length ?? 0} Controllers, ${analysis?.services.length ?? 0} Services`);
       if (analysis?.feignClients.length) {
@@ -138,7 +138,7 @@ async function validateSpecStructure(
   for (const section of requiredSections) {
     const found = headings.find((h) => h.text === section);
     if (!found) {
-      warnings.push(`缺少必填章节: ${section}`);
+      warnings.push(`${t.lblMissingSection} ${section}`);
     }
   }
 
@@ -146,7 +146,7 @@ async function validateSpecStructure(
   const requiredTables = (specTemplate.requiredTables as string[]) ?? [];
   const hasTable = tree.children.some((n) => n.type === "table");
   if (requiredTables.length > 0 && !hasTable) {
-    warnings.push(`缺少表格，需要 ${requiredTables.join(", ")} 表格`);
+    warnings.push(`${t.lblMissingTable} ${requiredTables.join(", ")} 表格`);
   }
 
   return { valid: warnings.length === 0, warnings };
@@ -154,15 +154,15 @@ async function validateSpecStructure(
 
 function formatServiceContext(svc: import("./types").MavenModule, analysis: import("./types").ServiceAnalysis | undefined): string {
   return [
-    `## \u670d\u52a1: ${svc.artifactId}`,
-    `- \u8def\u5f84: ${svc.path}`,
-    `- Controllers: ${analysis?.controllers.length ?? 0} \u4e2a`,
-    `- Controller\u5217\u8868: ${analysis?.controllers.map(c => c.className).join(", ") ?? "\u65e0"}`,
-    `- Services: ${analysis?.services.length ?? 0} \u4e2a`,
-    `- Feign\u5ba2\u6237\u7aef: ${analysis?.feignClients.map(f => `${f.className}->${f.targetService}`).join(", ") ?? "\u65e0"}`,
-    `- \u5305\u7ed3\u6784: ${analysis?.packageTree.join(", ") ?? "\u65e0"}`,
-    `- \u4f9d\u8d56: ${svc.dependencies.join(", ")}`,
-    `- \u56fe\u8868: diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
+    `${t.lblService} ${svc.artifactId}`,
+    `${t.lblPath} ${svc.path}`,
+    `${t.lblControllers} ${analysis?.controllers.length ?? 0}`,
+    `${t.lblControllerList} ${analysis?.controllers.map(c => c.className).join(", ") ?? t.lblNotDetected}`,
+    `${t.lblServices} ${analysis?.services.length ?? 0}`,
+    `${t.lblFeignClients} ${analysis?.feignClients.map(f => `${f.className}->${f.targetService}`).join(", ") ?? t.lblNotDetected}`,
+    `${t.lblPackageTree} ${analysis?.packageTree.join(", ") ?? t.lblNotDetected}`,
+    `${t.lblDependencies} ${svc.dependencies.join(", ")}`,
+    `${t.lblDiagrams} diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
   ].join("\n");
 }
 

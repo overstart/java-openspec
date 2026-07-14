@@ -1,0 +1,29 @@
+{
+  "requiredSections": [
+    "File and Directory Naming",
+    "Code Symbol Naming",
+    "Entity Class Naming",
+    "DTO/BO/VO Naming",
+    "Controller Naming",
+    "Service Naming",
+    "Annotation Conventions",
+    "Package Structure"
+  ],
+  "requiredTables": [
+    "File and Directory Naming",
+    "Code Symbol Naming",
+    "Entity Class Naming",
+    "DTO/BO/VO Naming",
+    "Annotation Conventions"
+  ],
+  "headingLevels": {
+    "File and Directory Naming": 3,
+    "Code Symbol Naming": 3,
+    "Entity Class Naming": 3,
+    "DTO/BO/VO Naming": 3,
+    "Controller Naming": 3,
+    "Service Naming": 3,
+    "Annotation Conventions": 3,
+    "Package Structure": 3
+  }
+}
