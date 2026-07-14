@@ -1,6 +1,7 @@
 import type { LLMProvider } from "../types";
 import { OpenAIProvider } from "./openai-provider";
 import { ACPProvider } from "./acp-provider";
+import { t } from "../i18n";
 
 // Provider 选择逻辑:
 // 1. OPENAI_API_KEY 存在 -> OpenAIProvider
@@ -15,7 +16,5 @@ export function createProvider(): LLMProvider {
     return new ACPProvider(process.env.ACP_AGENT_CMD);
   }
 
-  throw new Error(
-    "No LLM provider configured. Set OPENAI_API_KEY for OpenAI mode, or ACP_AGENT_CMD for ACP mode (e.g. ACP_AGENT_CMD=opencode acp)."
-  );
+  throw new Error(t.notConfigured);
 }

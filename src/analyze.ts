@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { glob } from "bun";
+import { t } from "./i18n";
 import type {
   AnalysisResult,
   ProjectInfo,
@@ -27,9 +28,9 @@ function runCodeGraph(args: string[], projectPath: string): string {
 }
 
 export async function initCodeGraph(projectPath: string): Promise<void> {
-  console.log("  Initializing CodeGraph index...");
+  console.log(t.initCodeGraph);
   runCodeGraph(["init", projectPath], projectPath);
-  console.log("  CodeGraph index ready.");
+  console.log(t.codeGraphReady);
 }
 
 function explore(projectPath: string, query: string): string {
@@ -283,7 +284,7 @@ export async function analyzeProject(
     await initCodeGraph(p);
   }
 
-  console.log("  Scanning Java files...");
+  console.log(t.scanning);
 
   // 全局扫描所有类（按模块路径分别扫描）
   let allClasses: string[] = [];
@@ -300,7 +301,7 @@ export async function analyzeProject(
       DTO_SUFFIXES.some((s) => c.endsWith(s))
   );
 
-  console.log(`  Found ${controllers.length} Controllers, ${services.length} Services, ${dtos.length} DTOs`);
+  console.log(t.foundClasses(controllers.length, services.length, dtos.length));
 
   const naming = analyzeNamingPatterns(controllers, services, serviceImpls, dtos, allClasses);
   const packageStructure = analyzePackages();
@@ -319,7 +320,7 @@ export async function analyzeProject(
   // 3.6-3.7: 按服务分析
   const serviceAnalyses: Record<string, ServiceAnalysis> = {};
   for (const svc of projectInfo.serviceModules) {
-    console.log(`  Analyzing ${svc.artifactId}...`);
+    console.log(t.analyzingService(svc.artifactId));
     serviceAnalyses[svc.artifactId] = await analyzeServiceDetail(svc.path, svc.artifactId);
   }
 

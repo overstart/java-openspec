@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import type { AnalysisResult, SpecDoc, DiagramFile, TokenUsage } from "./types";
 import { loadEnv } from "./env";
 import { createProvider } from "./providers";
+import { t } from "./i18n";
 
 // 加载 .env (三级优先级)
 await loadEnv();
@@ -169,13 +170,13 @@ export async function generateDocs(
   const specTypes = ["overview", "coding-style", "architecture", "security"] as const;
   const globalResults = await Promise.all(
     specTypes.map(async (name) => {
-      console.log(`  Generating ${name}.md...`);
+      console.log(t.generatingDoc(name));
       const template = await loadTemplate(name);
       const analysis = formatAnalysisForLLM(result, name);
       const { content, usage } = await provider.generate(template, analysis);
       const validation = await validateSpecStructure(content, name);
       if (!validation.valid) {
-        console.warn(`  ⚠ ${name}.md validation warnings:`, validation.warnings);
+        console.warn(t.validationWarning(name), validation.warnings);
       }
       return { name, content, usage };
     })
@@ -210,7 +211,7 @@ export async function generateDocs(
         `- 图表: diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
       ].join("\n");
 
-      console.log(`  Generating ${svc.artifactId}/architecture.md...`);
+      console.log(t.generatingArch(svc.artifactId));
       const template = await loadTemplate("architecture");
       const { content, usage } = await provider.generate(template, svcContext);
       return { artifactId: svc.artifactId, content, usage };
@@ -227,6 +228,6 @@ export async function generateDocs(
   }
 
   await provider.close?.();
-  console.log(`  Generated ${docs.length} spec documents`);
+  console.log(t.generatedDocs(docs.length));
   return { docs, totalUsage };
 }

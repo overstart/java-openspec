@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import type { AnalysisResult, DiagramFile, MavenModule } from "./types";
 
 // 生成 C4 System Context 图 (flowchart)
@@ -219,7 +220,7 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
   const diagrams: DiagramFile[] = [];
 
   // 4.2: C4 System Context
-  console.log("  Generating C4 System Context diagram...");
+  console.log(t.generatingContext);
   diagrams.push({
     filename: "context.mmd",
     content: generateContextDiagram(result),
@@ -246,6 +247,6 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
     });
   }
 
-  console.log(`  Generated ${diagrams.length} diagrams`);
+  console.log(t.generatedDiagrams(diagrams.length));
   return diagrams;
 }

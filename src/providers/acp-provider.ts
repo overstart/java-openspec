@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import * as acp from "@agentclientprotocol/sdk";
 import type { LLMProvider, TokenUsage } from "../types";
 import { stripPreamble } from "../postprocess";
+import { t } from "../i18n";
 
 // 解析 ACP_AGENT_CMD 为命令 + 参数
 export function parseAgentCommand(cmd: string): { command: string; args: string[] } {
@@ -26,7 +27,7 @@ export class ACPProvider implements LLMProvider {
     if (this.connection) return this.connection.agent;
 
     const { command, args } = parseAgentCommand(this.agentCmd);
-    console.log(`[ACP] Starting agent: ${command} ${args.join(" ")}`);
+    console.log(t.acpStarting(`${command} ${args.join(" ")}`));
 
     this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "inherit"],
@@ -78,9 +79,7 @@ export class ACPProvider implements LLMProvider {
         },
       }
     );
-    console.log(
-      `[ACP] Connected to agent (protocol v${initResult.protocolVersion})`
-    );
+    console.log(t.acpConnected(String(initResult.protocolVersion)));
 
     return this.connection.agent;
   }

@@ -7,6 +7,7 @@ import { generateDiagrams } from "./generate-diagrams";
 import { generateDocs } from "./generate-docs";
 import { createStore, generateReport } from "./create-store";
 import { formatTokenReport } from "./pricing";
+import { t } from "./i18n";
 import type { ProjectInfo, MavenModule } from "./types";
 
 interface ConfigFile {
@@ -50,10 +51,10 @@ export async function pipeline(
   const startTime = Date.now();
 
   const absProjectPath = resolve(projectPath);
-  console.log("java-openspec v0.2.0");
-  console.log(`Target: ${absProjectPath}`);
-  console.log(`Store:  ${resolve(absProjectPath, "..")}/${absProjectPath.split("/").pop()}-specs`);
-  if (options.config) console.log(`Config: ${options.config}`);
+  console.log(t.version("0.2.0"));
+  console.log(t.target(absProjectPath));
+  console.log(t.store(`${resolve(absProjectPath, "..")}/${absProjectPath.split("/").pop()}-specs`));
+  if (options.config) console.log(t.config(options.config));
   console.log("");
 
   try {
@@ -64,39 +65,35 @@ export async function pipeline(
       const config = await loadConfig(options.config);
       const configDir = dirname(resolve(options.config));
       projectInfo = buildProjectInfoFromConfig(config, absProjectPath, configDir);
-      console.log(
-        `[1/6] Loaded config: ${projectInfo.serviceModules.length} services`
-      );
+      console.log(t.loadedConfig(projectInfo.serviceModules.length));
     } else {
       // 8.4: 原有行为 - 自动检测 Maven 多模块项目
-      console.log("[1/6] Detecting project structure...");
+      console.log(t.detecting);
       projectInfo = await detectProject(absProjectPath);
-      console.log(
-        `  Found ${projectInfo.serviceModules.length} services, ${projectInfo.libraryModules.length} libraries`
-      );
+      console.log(t.foundModules(projectInfo.serviceModules.length, projectInfo.libraryModules.length));
     }
 
     // 2. analyze
-    console.log("[2/6] Analyzing code...");
+    console.log(t.analyzing);
     const analysisResult = await analyzeProject(projectInfo);
 
     // 3. generate-diagrams
-    console.log("[3/6] Generating diagrams...");
+    console.log(t.generatingDiagrams);
     const diagrams = generateDiagrams(analysisResult);
 
     // 4. generate-docs
-    console.log("[4/6] Generating spec documents (this may take a while)...");
+    console.log(t.generatingDocs);
     const { docs, totalUsage } = await generateDocs(analysisResult, diagrams);
 
     // 5. create-store
-    console.log("[5/6] Creating OpenSpec store...");
+    console.log(t.creatingStore);
     const storePath = await createStore(analysisResult, docs, diagrams, options);
 
     // 6. done
-    console.log("[6/6] Done!");
+    console.log(t.done);
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`\nCompleted in ${elapsed}s`);
+    console.log(`\n${t.completed(elapsed)}`);
 
     const report = generateReport(analysisResult, docs, diagrams, storePath);
     console.log(report);
@@ -105,8 +102,8 @@ export async function pipeline(
     const model = process.env.LLM_MODEL ?? "unknown";
     console.log(formatTokenReport(model, totalUsage));
   } catch (error) {
-    console.error("\nError:", error instanceof Error ? error.message : String(error));
-    console.error("Pipeline failed. Check the error above for details.");
+    console.error(`\n${t.errorPrefix}`, error instanceof Error ? error.message : String(error));
+    console.error(t.failed);
     process.exit(1);
   }
 }

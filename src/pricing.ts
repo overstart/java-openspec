@@ -1,4 +1,5 @@
 import type { TokenUsage } from "./types";
+import { t } from "./i18n";
 
 interface PricingTier {
   inputPerMillion: number;  // 美元
@@ -25,12 +26,12 @@ export function formatTokenReport(model: string, usage: TokenUsage): string {
     const lines = [
       "",
       "┌─────────────────────────────────────┐",
-      "│  Token 消费                          │",
-      `│  Model:   ${model.padEnd(28)}│`,
-      "│  Input:   N/A (ACP mode)             │",
-      "│  Output:  N/A (ACP mode)             │",
-      "│  Total:   N/A (ACP mode)             │",
-      "│  Est.Cost: N/A                       │",
+      `│  ${t.tokenTitle.padEnd(28)}│`,
+      `│  ${t.tokenModel}:   ${t.tokenNa.padEnd(28 - t.tokenModel.length - 3)}│`,
+      `│  ${t.tokenInput}:   ${t.tokenNa.padEnd(28 - t.tokenInput.length - 3)}│`,
+      `│  ${t.tokenOutput}:  ${t.tokenNa.padEnd(28 - t.tokenOutput.length - 3)}│`,
+      `│  ${t.tokenTotal}:   ${t.tokenNa.padEnd(28 - t.tokenTotal.length - 3)}│`,
+      `│  ${t.tokenCost}: ${t.tokenNa.padEnd(28 - t.tokenCost.length - 2)}│`,
       "└─────────────────────────────────────┘",
     ];
     return lines.join("\n");
@@ -40,12 +41,12 @@ export function formatTokenReport(model: string, usage: TokenUsage): string {
   const lines = [
     "",
     "┌─────────────────────────────────────┐",
-    "│  Token 消费                          │",
-    `│  Model:   ${model.padEnd(28)}│`,
-    `│  Input:   ${usage.promptTokens.toLocaleString().padEnd(28)}│`,
-    `│  Output:  ${usage.completionTokens.toLocaleString().padEnd(28)}│`,
-    `│  Total:   ${usage.totalTokens.toLocaleString().padEnd(28)}│`,
-    `│  Est.Cost: $${cost.toFixed(4).padEnd(27)}│`,
+    `│  ${t.tokenTitle.padEnd(28)}│`,
+    `│  ${t.tokenModel}:   ${model.padEnd(28 - t.tokenModel.length - 3)}│`,
+    `│  ${t.tokenInput}:   ${usage.promptTokens.toLocaleString().padEnd(28 - t.tokenInput.length - 3)}│`,
+    `│  ${t.tokenOutput}:  ${usage.completionTokens.toLocaleString().padEnd(28 - t.tokenOutput.length - 3)}│`,
+    `│  ${t.tokenTotal}:   ${usage.totalTokens.toLocaleString().padEnd(28 - t.tokenTotal.length - 3)}│`,
+    `│  ${t.tokenCost}: $${cost.toFixed(4).padEnd(28 - t.tokenCost.length - 2)}│`,
     "└─────────────────────────────────────┘",
   ];
   return lines.join("\n");

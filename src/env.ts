@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { t } from "./i18n";
 
 // 三级优先级 .env 查找
 export async function loadEnv(): Promise<Record<string, string>> {
@@ -14,7 +15,7 @@ export async function loadEnv(): Promise<Record<string, string>> {
     try {
       await readFile(explicitPath, "utf-8");
     } catch {
-      console.warn(`  ⚠ JAVA_OPENSPEC_ENV=${explicitPath} not found, falling back`);
+      console.warn(t.explicitNotFound(explicitPath));
     }
   }
 
@@ -54,7 +55,7 @@ export async function loadEnv(): Promise<Record<string, string>> {
       const template = await readFile(templatePath, "utf-8");
       await mkdir(configDir, { recursive: true });
       await writeFile(envPath, template);
-      console.log(`\n  已创建 ${envPath}，请编辑后重新运行。\n`);
+      console.log(`\n  ${t.autoCreated(envPath)}\n`);
       process.exit(0);
     } catch {
       // 创建失败，静默跳过
