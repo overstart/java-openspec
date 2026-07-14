@@ -51,7 +51,7 @@ export async function pipeline(
   const startTime = Date.now();
 
   const absProjectPath = resolve(projectPath);
-  console.log(t.version("0.3.0"));
+  console.log(t.version("0.3.1"));
   console.log(t.target(absProjectPath));
   console.log(t.store(`${resolve(absProjectPath, "..")}/${absProjectPath.split("/").pop()}-specs`));
   if (options.config) console.log(t.config(options.config));
