@@ -16,9 +16,9 @@ A CLI tool that auto-generates OpenSpec stores from Java Spring Cloud projects.
 
 | Tool | Min Version | Purpose | Check Command |
 |------|-------------|---------|---------------|
-| [Bun](https://bun.sh) | 1.0 | Runtime | `bun --version` |
-| [CodeGraph](https://github.com/nicholasxuu/codegraph) | 1.3 | Java AST analysis | `codegraph --version` |
-| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.5 | Store creation & registration | `openspec --version` |
+| [Bun](https://bun.sh) | 1.3 | Runtime | `bun --version` |
+| [CodeGraph](https://github.com/colbymchenry/codegraph) | 1.4 | Java AST analysis | `codegraph --version` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.6 | Store creation & registration | `openspec --version` |
 
 ### Install CodeGraph
 

@@ -16,9 +16,9 @@
 
 | 工具 | 最低版本 | 用途 | 检查命令 |
 |------|---------|------|---------|
-| [Bun](https://bun.sh) | 1.0 | 运行时 | `bun --version` |
-| [CodeGraph](https://github.com/nicholasxuu/codegraph) | 1.3 | Java AST 分析 | `codegraph --version` |
-| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.5 | Store 创建与注册 | `openspec --version` |
+| [Bun](https://bun.sh) | 1.3 | 运行时 | `bun --version` |
+| [CodeGraph](https://github.com/colbymchenry/codegraph) | 1.4 | Java AST 分析 | `codegraph --version` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.6 | Store 创建与注册 | `openspec --version` |
 
 ### 安装 CodeGraph
 
