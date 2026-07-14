@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { load } from "js-yaml";
 import { detectProject } from "./detect";
 import { analyzeProject } from "./analyze";
@@ -20,12 +20,13 @@ async function loadConfig(configPath: string): Promise<ConfigFile> {
 
 function buildProjectInfoFromConfig(
   config: ConfigFile,
-  basePath: string
+  basePath: string,
+  configDir: string
 ): ProjectInfo {
   const entries = Object.entries(config.services);
   const modules: MavenModule[] = entries.map(([name, path]) => ({
     artifactId: name,
-    path: resolve(path),
+    path: resolve(configDir, path),
     isService: true,
     dependencies: [],
     dependencyVersions: {},
@@ -61,7 +62,8 @@ export async function pipeline(
     if (options.config) {
       // 8.3: 使用配置文件，跳过 Maven 检测
       const config = await loadConfig(options.config);
-      projectInfo = buildProjectInfoFromConfig(config, absProjectPath);
+      const configDir = dirname(resolve(options.config));
+      projectInfo = buildProjectInfoFromConfig(config, absProjectPath, configDir);
       console.log(
         `[1/6] Loaded config: ${projectInfo.serviceModules.length} services`
       );

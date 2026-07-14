@@ -37,10 +37,8 @@ function explore(projectPath: string, query: string): string {
 }
 
 // 使用 glob 扫描所有 Java 文件并提取类名
-async function scanJavaFiles(projectPath: string, moduleName?: string): Promise<string[]> {
-  const pattern = moduleName
-    ? `${projectPath}/${moduleName}/src/**/*.java`
-    : `${projectPath}/**/src/**/*.java`;
+async function scanJavaFiles(projectPath: string): Promise<string[]> {
+  const pattern = `${projectPath}/src/**/*.java`;
 
   const files = Array.from(new Bun.Glob(pattern).scanSync());
   const classes: string[] = [];
@@ -178,10 +176,10 @@ function analyzeSecurity(projectPath: string): SecurityInfo {
 }
 
 async function analyzeServiceDetail(
-  projectPath: string,
+  modulePath: string,
   moduleName: string
 ): Promise<ServiceAnalysis> {
-  const classes = await scanJavaFiles(projectPath, moduleName);
+  const classes = await scanJavaFiles(modulePath);
 
   // 提取 Controller 类
   const controllerClasses = classes.filter((c) => c.endsWith("Controller"));
@@ -210,9 +208,7 @@ async function analyzeServiceDetail(
 
   // 提取 @FeignClient 注解
   const feignClients: FeignClientInfo[] = [];
-  const pattern = moduleName
-    ? `${projectPath}/${moduleName}/src/**/*.java`
-    : `${projectPath}/**/src/**/*.java`;
+  const pattern = `${modulePath}/src/**/*.java`;
   const files = Array.from(new Bun.Glob(pattern).scanSync());
   for (const file of files) {
     try {
@@ -257,7 +253,7 @@ async function analyzeServiceDetail(
   const callPaths: CallPath[] = [];
   if (controllerClasses.length > 0) {
     const ctrlQuery = controllerClasses.slice(0, 3).join(" ");
-    const output = explore(projectPath, ctrlQuery);
+    const output = explore(modulePath, ctrlQuery);
 
     // 解析 calls 关系
     const callRe = /^(\w+)\s+→\s+(\w+)/gm;
@@ -281,13 +277,20 @@ export async function analyzeProject(
 ): Promise<AnalysisResult> {
   const { rootPath } = projectInfo;
 
-  // 3.2: 一次性索引
-  await initCodeGraph(rootPath);
+  // 3.2: 一次性索引（每个唯一路径）
+  const uniquePaths = [...new Set(projectInfo.modules.map(m => m.path))];
+  for (const p of uniquePaths) {
+    await initCodeGraph(p);
+  }
 
   console.log("  Scanning Java files...");
 
-  // 全局扫描所有类
-  const allClasses = await scanJavaFiles(rootPath);
+  // 全局扫描所有类（按模块路径分别扫描）
+  let allClasses: string[] = [];
+  for (const mod of projectInfo.modules) {
+    const classes = await scanJavaFiles(mod.path);
+    allClasses = allClasses.concat(classes);
+  }
 
   const controllers = allClasses.filter((c) => c.endsWith("Controller"));
   const services = allClasses.filter((c) => c.endsWith("Service") && !c.endsWith("ServiceImpl"));
@@ -302,7 +305,7 @@ export async function analyzeProject(
   const naming = analyzeNamingPatterns(controllers, services, serviceImpls, dtos, allClasses);
   const packageStructure = analyzePackages();
   const annotationUsage = analyzeAnnotations();
-  const securityInfo = analyzeSecurity(rootPath);
+  const securityInfo = analyzeSecurity(projectInfo.modules[0]?.path ?? rootPath);
 
   const globalPatterns: GlobalPatterns = {
     namingPatterns: naming.patterns,
@@ -317,7 +320,7 @@ export async function analyzeProject(
   const serviceAnalyses: Record<string, ServiceAnalysis> = {};
   for (const svc of projectInfo.serviceModules) {
     console.log(`  Analyzing ${svc.artifactId}...`);
-    serviceAnalyses[svc.artifactId] = await analyzeServiceDetail(rootPath, svc.artifactId);
+    serviceAnalyses[svc.artifactId] = await analyzeServiceDetail(svc.path, svc.artifactId);
   }
 
   return { projectInfo, globalPatterns, securityInfo, serviceAnalyses };
