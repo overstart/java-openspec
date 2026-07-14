@@ -152,6 +152,20 @@ async function validateSpecStructure(
   return { valid: warnings.length === 0, warnings };
 }
 
+function formatServiceContext(svc: import("./types").MavenModule, analysis: import("./types").ServiceAnalysis | undefined): string {
+  return [
+    `## \u670d\u52a1: ${svc.artifactId}`,
+    `- \u8def\u5f84: ${svc.path}`,
+    `- Controllers: ${analysis?.controllers.length ?? 0} \u4e2a`,
+    `- Controller\u5217\u8868: ${analysis?.controllers.map(c => c.className).join(", ") ?? "\u65e0"}`,
+    `- Services: ${analysis?.services.length ?? 0} \u4e2a`,
+    `- Feign\u5ba2\u6237\u7aef: ${analysis?.feignClients.map(f => `${f.className}->${f.targetService}`).join(", ") ?? "\u65e0"}`,
+    `- \u5305\u7ed3\u6784: ${analysis?.packageTree.join(", ") ?? "\u65e0"}`,
+    `- \u4f9d\u8d56: ${svc.dependencies.join(", ")}`,
+    `- \u56fe\u8868: diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
+  ].join("\n");
+}
+
 export async function generateDocs(
   result: AnalysisResult,
   diagrams: DiagramFile[]
@@ -166,7 +180,38 @@ export async function generateDocs(
     totalUsage.totalTokens += u.totalTokens;
   }
 
-  // === Batch 1: 全局 spec (4 个并行) ===
+  // === 无 LLM 模式: 直揮输出分析数据 ===
+  if (!provider) {
+    const specTypes = ["overview", "coding-style", "architecture", "security"] as const;
+    for (const name of specTypes) {
+      console.log(t.generatingDoc(name));
+      const analysis = formatAnalysisForLLM(result, name);
+      docs.push({
+        filename: `${name}.md`,
+        content: `${t.noLlmHeader}\n\n${analysis}`,
+        path: `openspec/docs/${name}.md`,
+      });
+    }
+
+    const serviceModules = result.projectInfo.serviceModules.filter(
+      (svc) => svc.isService && svc.artifactId !== "mall-common"
+    );
+    for (const svc of serviceModules) {
+      const analysis = result.serviceAnalyses[svc.artifactId];
+      const svcContext = formatServiceContext(svc, analysis);
+      console.log(t.generatingArch(svc.artifactId));
+      docs.push({
+        filename: "architecture.md",
+        content: `${t.noLlmHeader}\n\n${svcContext}`,
+        path: `openspec/docs/${svc.artifactId}/architecture.md`,
+      });
+    }
+
+    console.log(t.generatedDocs(docs.length));
+    return { docs, totalUsage };
+  }
+
+  // === LLM 模式: 当前行为 ===
   const specTypes = ["overview", "coding-style", "architecture", "security"] as const;
   const globalResults = await Promise.all(
     specTypes.map(async (name) => {
@@ -191,7 +236,6 @@ export async function generateDocs(
     });
   }
 
-  // === Batch 2: 按服务 architecture (并行) ===
   const serviceModules = result.projectInfo.serviceModules.filter(
     (svc) => svc.isService && svc.artifactId !== "mall-common"
   );
@@ -199,18 +243,7 @@ export async function generateDocs(
   const archResults = await Promise.all(
     serviceModules.map(async (svc) => {
       const analysis = result.serviceAnalyses[svc.artifactId];
-      const svcContext = [
-        `## 服务: ${svc.artifactId}`,
-        `- 路径: ${svc.path}`,
-        `- Controllers: ${analysis?.controllers.length ?? 0} 个`,
-        `- Controller列表: ${analysis?.controllers.map(c => c.className).join(", ") ?? "无"}`,
-        `- Services: ${analysis?.services.length ?? 0} 个`,
-        `- Feign客户端: ${analysis?.feignClients.map(f => `${f.className}→${f.targetService}`).join(", ") ?? "无"}`,
-        `- 包结构: ${analysis?.packageTree.join(", ") ?? "无"}`,
-        `- 依赖: ${svc.dependencies.join(", ")}`,
-        `- 图表: diagrams/${svc.artifactId}-container.mmd, diagrams/${svc.artifactId}-flow.mmd`,
-      ].join("\n");
-
+      const svcContext = formatServiceContext(svc, analysis);
       console.log(t.generatingArch(svc.artifactId));
       const template = await loadTemplate("architecture");
       const { content, usage } = await provider.generate(template, svcContext);

@@ -38,8 +38,9 @@ test("createProvider: 无 API key 但有 ACP_AGENT_CMD 时返回 ACPProvider", (
   expect(provider).toBeInstanceOf(ACPProvider);
 });
 
-test("createProvider: 两者都未配置时抛出错误", () => {
-  expect(() => createProvider()).toThrow(/No LLM provider configured/);
+test("createProvider: 两者都未配置时返回 null", () => {
+  const provider = createProvider();
+  expect(provider).toBeNull();
 });
 
 test("createProvider: OPENAI_API_KEY 优先于 ACP_AGENT_CMD", () => {

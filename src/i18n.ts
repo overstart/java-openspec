@@ -85,6 +85,10 @@ export interface Messages {
   // generate-diagrams.ts
   generatingContext: string;
   generatedDiagrams: (n: number) => string;
+
+  // no-LLM mode
+  noLlmHeader: string;
+  noLlmNotice: string;
 }
 
 const en: Messages = {
@@ -162,6 +166,9 @@ const en: Messages = {
 
   generatingContext: "  Generating C4 System Context diagram...",
   generatedDiagrams: (n) => `  Generated ${n} diagrams`,
+
+  noLlmHeader: "<!-- Generated without LLM, contains CodeGraph analysis data only -->",
+  noLlmNotice: "\n  \u26a0 Specs generated without LLM. Documents contain CodeGraph analysis data only.\n  Configure OPENAI_API_KEY or ACP_AGENT_CMD to regenerate with LLM.\n",
 };
 
 const zh: Messages = {
@@ -239,6 +246,9 @@ const zh: Messages = {
 
   generatingContext: "  生成 C4 System Context 图表...",
   generatedDiagrams: (n) => `  生成 ${n} 个图表`,
+
+  noLlmHeader: "<!-- 未经 LLM 生成，仅含 CodeGraph 分析数据 -->",
+  noLlmNotice: "\n  ⚠ 本次生成未经 LLM 润色，spec 文档仅包含 CodeGraph 分析数据。\n  配置 OPENAI_API_KEY 或 ACP_AGENT_CMD 后可重新生成。\n",
 };
 
 export const t = isZh ? zh : en;

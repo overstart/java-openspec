@@ -99,8 +99,13 @@ export async function pipeline(
     console.log(report);
 
     // Token 消费报告 (最后输出)
-    const model = process.env.LLM_MODEL ?? "unknown";
-    console.log(formatTokenReport(model, totalUsage));
+    const hasLLM = !!process.env.OPENAI_API_KEY || !!process.env.ACP_AGENT_CMD;
+    if (hasLLM) {
+      const model = process.env.LLM_MODEL ?? "unknown";
+      console.log(formatTokenReport(model, totalUsage));
+    } else {
+      console.log(t.noLlmNotice);
+    }
   } catch (error) {
     console.error(`\n${t.errorPrefix}`, error instanceof Error ? error.message : String(error));
     console.error(t.failed);
