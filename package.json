@@ -1,6 +1,6 @@
 {
   "name": "java-openspec",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "从 Java Spring Cloud 项目自动生成 OpenSpec store 的 CLI 工具",
   "type": "module",
   "bin": {

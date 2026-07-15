@@ -39,7 +39,7 @@ function explore(projectPath: string, query: string): string {
 
 // 使用 glob 扫描所有 Java 文件并提取类名
 async function scanJavaFiles(projectPath: string): Promise<string[]> {
-  const pattern = `${projectPath}/src/**/*.java`;
+  const pattern = `${projectPath}/**/src/**/*.java`;
 
   const files = Array.from(new Bun.Glob(pattern).scanSync());
   const classes: string[] = [];
@@ -209,7 +209,7 @@ async function analyzeServiceDetail(
 
   // 提取 @FeignClient 注解
   const feignClients: FeignClientInfo[] = [];
-  const pattern = `${modulePath}/src/**/*.java`;
+  const pattern = `${modulePath}/**/src/**/*.java`;
   const files = Array.from(new Bun.Glob(pattern).scanSync());
   for (const file of files) {
     try {
