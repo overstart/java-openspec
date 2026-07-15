@@ -11,7 +11,7 @@ import {
   extractRootProperties,
   extractManagedVersions,
   extractVersion,
-  buildDependencyGraph,
+  getValue,
 } from "./detect";
 import { analyzeProject } from "./analyze";
 import { generateDiagrams } from "./generate-diagrams";
@@ -41,14 +41,37 @@ async function buildProjectInfoFromConfig(
   const entries = Object.entries(config.services).filter(([name]) => !excludeSet.has(name));
 
   const modules: MavenModule[] = [];
+  // pomArtifactId -> yamlKey 映射，用于依赖图匹配
+  const pomArtifactIdMap = new Map<string, string>();
+
   for (const [name, path] of entries) {
     const modulePath = resolve(configDir, path);
     const pomPath = join(modulePath, "pom.xml");
 
     if (existsSync(pomPath)) {
       const pom = await readPom(pomPath);
-      const rootProperties = extractRootProperties(pom);
-      const managedVersions = extractManagedVersions(pom, rootProperties);
+
+      // 提取 pom 真实 artifactId，用于依赖图匹配
+      const pomArtifactId = getValue(pom.project.artifactId) ?? name;
+      pomArtifactIdMap.set(pomArtifactId, name);
+
+      // 尝试读父 pom 的 properties/managedVersions
+      let rootProperties = extractRootProperties(pom);
+      let managedVersions = extractManagedVersions(pom, rootProperties);
+
+      const parentPomPath = join(modulePath, "..", "pom.xml");
+      if (existsSync(parentPomPath) && resolve(parentPomPath) !== resolve(pomPath)) {
+        try {
+          const parentPom = await readPom(parentPomPath);
+          const parentProperties = extractRootProperties(parentPom);
+          const parentManaged = extractManagedVersions(parentPom, parentProperties);
+          rootProperties = { ...parentProperties, ...rootProperties };
+          managedVersions = { ...parentManaged, ...managedVersions };
+        } catch {
+          // 父 pom 读取失败，用模块自己的
+        }
+      }
+
       const hasModules = (pom.project.modules?.[0]?.module ?? []).length > 0;
 
       modules.push({
@@ -68,6 +91,29 @@ async function buildProjectInfoFromConfig(
         dependencies: [],
         dependencyVersions: {},
       });
+      pomArtifactIdMap.set(name, name);
+    }
+  }
+
+  // 构建依赖图：用 pom artifactId 匹配依赖，结果用 YAML key
+  const dependencyGraph: Record<string, string[]> = {};
+  for (const mod of modules) {
+    dependencyGraph[mod.artifactId] = [];
+    for (const other of modules) {
+      if (other.artifactId === mod.artifactId) continue;
+      // 查找 other 模块的 pom artifactId
+      let otherPomArtifactId: string | undefined;
+      for (const [pomId, yamlKey] of pomArtifactIdMap) {
+        if (yamlKey === other.artifactId) {
+          otherPomArtifactId = pomId;
+          break;
+        }
+      }
+      if (!otherPomArtifactId) continue;
+      // 依赖格式为 groupId:artifactId，按后缀匹配
+      if (mod.dependencies.some((d) => d.endsWith(`:${otherPomArtifactId}`))) {
+        dependencyGraph[mod.artifactId]!.push(other.artifactId);
+      }
     }
   }
 
@@ -82,7 +128,7 @@ async function buildProjectInfoFromConfig(
     modules,
     serviceModules,
     libraryModules,
-    dependencyGraph: buildDependencyGraph(modules, "multi-project"),
+    dependencyGraph,
   };
 }
 
