@@ -129,6 +129,9 @@ When microservices are spread across different directories, use a config file:
 
 ```yaml
 # java-openspec.yml
+name: mall-specs             # optional, store name (default: workspace-specs)
+exclude:                     # optional, modules to skip (exact name match)
+  - mall-demo
 services:
   mall-admin: /home/liyf/gitrepo/mall-admin
   mall-portal: /home/liyf/gitrepo/mall-portal
@@ -136,7 +139,11 @@ services:
 ```
 
 ```bash
-java-openspec init /path/to/workspace --config java-openspec.yml
+# project-path is optional with --config (defaults to current directory)
+java-openspec init --config java-openspec.yml
+
+# Or specify output directory explicitly
+java-openspec init --config java-openspec.yml --output /path/to/store
 ```
 
 ## Output

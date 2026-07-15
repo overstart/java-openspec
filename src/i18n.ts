@@ -16,6 +16,7 @@ export interface Messages {
   initArg: string;
   initForce: string;
   initConfig: string;
+  initOutput: string;
 
   // pipeline.ts
   version: (v: string) => string;
@@ -134,16 +135,19 @@ export interface Messages {
 const en: Messages = {
   cliDescription: "Auto-generate OpenSpec stores from Java Spring Cloud projects",
   initDescription: "Analyze Java project and generate OpenSpec store (spec docs + architecture diagrams)",
-  initArg: "Target project path (Maven root dir or workspace dir)",
+  initArg: "Target project path (optional with --config, defaults to current directory)",
   initForce: "Overwrite existing store",
   initConfig:
     "Use multi-path config file (YAML) for microservices in separate directories.\n" +
     "    Config format:\n" +
+    "      name: mall-specs           # optional, store name\n" +
+    "      exclude:                   # optional, modules to skip\n" +
+    "        - mall-demo\n" +
     "      services:\n" +
     "        mall-admin: /path/to/mall-admin\n" +
-    "        mall-portal: /path/to/mall-portal\n" +
     "    Paths can be absolute or relative to the config file.\n" +
     "    Without --config, auto-detects Maven multi-module project.",
+  initOutput: "Output directory for the store (default: parent of project-path)",
 
   version: (v) => `java-openspec v${v}`,
   target: (p) => `Target: ${p}`,
@@ -250,16 +254,19 @@ const en: Messages = {
 const zh: Messages = {
   cliDescription: "从 Java Spring Cloud 项目自动生成 OpenSpec store",
   initDescription: "分析 Java 项目并生成 OpenSpec store (spec 文档 + 架构图)",
-  initArg: "目标项目路径 (Maven 根目录或工作区目录)",
+  initArg: "目标项目路径 (与 --config 配合时可省略，默认为当前目录)",
   initForce: "覆盖已存在的 store",
   initConfig:
     "使用多路径配置文件 (YAML)，适用于微服务分散在不同目录的场景。\n" +
     "    配置文件格式:\n" +
+    "      name: mall-specs           # 可选，store 名称\n" +
+    "      exclude:                   # 可选，要跳过的模块\n" +
+    "        - mall-demo\n" +
     "      services:\n" +
     "        mall-admin: /path/to/mall-admin\n" +
-    "        mall-portal: /path/to/mall-portal\n" +
     "    路径可为绝对路径或相对配置文件的相对路径。\n" +
     "    不指定 --config 时自动检测 Maven 多模块项目。",
+  initOutput: "store 输出目录 (默认: 项目路径的父目录)",
 
   version: (v) => `java-openspec v${v}`,
   target: (p) => `Target: ${p}`,

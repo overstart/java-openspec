@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { parseStringPromise } from "xml2js";
 import type { MavenModule, ProjectInfo } from "./types";
 
-interface PomXml {
+export interface PomXml {
   project: {
     groupId?: string[];
     artifactId?: string[];
@@ -55,16 +55,16 @@ interface PomXml {
   };
 }
 
-function getValue(arr?: string[]): string | undefined {
+export function getValue(arr?: string[]): string | undefined {
   return arr?.[0];
 }
 
-async function readPom(pomPath: string): Promise<PomXml> {
+export async function readPom(pomPath: string): Promise<PomXml> {
   const xml = await readFile(pomPath, "utf-8");
   return parseStringPromise(xml);
 }
 
-function isSpringBootService(pom: PomXml): boolean {
+export function isSpringBootService(pom: PomXml): boolean {
   const deps = pom.project.dependencies?.[0]?.dependency ?? [];
   const hasWeb = deps.some(
     (d) =>
@@ -82,12 +82,12 @@ function isSpringBootService(pom: PomXml): boolean {
   return hasWeb || hasBootPlugin;
 }
 
-function extractDependencies(pom: PomXml): string[] {
+export function extractDependencies(pom: PomXml): string[] {
   const deps = pom.project.dependencies?.[0]?.dependency ?? [];
   return deps.map((d) => `${getValue(d.groupId)}:${getValue(d.artifactId)}`);
 }
 
-function extractDependencyVersions(
+export function extractDependencyVersions(
   pom: PomXml,
   rootProperties: Record<string, string>,
   managedVersions: Record<string, string>
@@ -144,7 +144,7 @@ function resolveVersion(
   return properties[key] ?? undefined;
 }
 
-function extractManagedVersions(
+export function extractManagedVersions(
   pom: PomXml,
   rootProperties: Record<string, string>
 ): Record<string, string> {
@@ -162,7 +162,7 @@ function extractManagedVersions(
   return versions;
 }
 
-function extractRootProperties(pom: PomXml): Record<string, string> {
+export function extractRootProperties(pom: PomXml): Record<string, string> {
   const props = pom.project.properties?.[0] ?? {};
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(props)) {
@@ -171,7 +171,7 @@ function extractRootProperties(pom: PomXml): Record<string, string> {
   return result;
 }
 
-function extractVersion(pom: PomXml, propKey: string): string | undefined {
+export function extractVersion(pom: PomXml, propKey: string): string | undefined {
   const props = pom.project.properties?.[0];
   if (props && props[propKey]) return props[propKey];
   return undefined;
@@ -197,7 +197,7 @@ async function analyzeModule(
   };
 }
 
-function buildDependencyGraph(
+export function buildDependencyGraph(
   modules: MavenModule[],
   groupId: string
 ): Record<string, string[]> {

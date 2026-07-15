@@ -1,7 +1,18 @@
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { load } from "js-yaml";
-import { detectProject } from "./detect";
+import {
+  detectProject,
+  readPom,
+  isSpringBootService,
+  extractDependencies,
+  extractDependencyVersions,
+  extractRootProperties,
+  extractManagedVersions,
+  extractVersion,
+  buildDependencyGraph,
+} from "./detect";
 import { analyzeProject } from "./analyze";
 import { generateDiagrams } from "./generate-diagrams";
 import { generateDocs } from "./generate-docs";
@@ -12,6 +23,8 @@ import type { ProjectInfo, MavenModule } from "./types";
 
 interface ConfigFile {
   services: Record<string, string>;
+  name?: string;
+  exclude?: string[];
 }
 
 async function loadConfig(configPath: string): Promise<ConfigFile> {
@@ -19,52 +32,81 @@ async function loadConfig(configPath: string): Promise<ConfigFile> {
   return load(content) as ConfigFile;
 }
 
-function buildProjectInfoFromConfig(
+async function buildProjectInfoFromConfig(
   config: ConfigFile,
   basePath: string,
   configDir: string
-): ProjectInfo {
-  const entries = Object.entries(config.services);
-  const modules: MavenModule[] = entries.map(([name, path]) => ({
-    artifactId: name,
-    path: resolve(configDir, path),
-    isService: true,
-    dependencies: [],
-    dependencyVersions: {},
-  }));
+): Promise<ProjectInfo> {
+  const excludeSet = new Set(config.exclude ?? []);
+  const entries = Object.entries(config.services).filter(([name]) => !excludeSet.has(name));
+
+  const modules: MavenModule[] = [];
+  for (const [name, path] of entries) {
+    const modulePath = resolve(configDir, path);
+    const pomPath = join(modulePath, "pom.xml");
+
+    if (existsSync(pomPath)) {
+      const pom = await readPom(pomPath);
+      const rootProperties = extractRootProperties(pom);
+      const managedVersions = extractManagedVersions(pom, rootProperties);
+      const hasModules = (pom.project.modules?.[0]?.module ?? []).length > 0;
+
+      modules.push({
+        artifactId: name,
+        path: modulePath,
+        isService: hasModules || isSpringBootService(pom),
+        dependencies: extractDependencies(pom),
+        dependencyVersions: extractDependencyVersions(pom, rootProperties, managedVersions),
+        springBootVersion: extractVersion(pom, "spring-boot.version"),
+        springCloudVersion: extractVersion(pom, "spring-cloud.version"),
+      });
+    } else {
+      modules.push({
+        artifactId: name,
+        path: modulePath,
+        isService: true,
+        dependencies: [],
+        dependencyVersions: {},
+      });
+    }
+  }
+
+  const artifactId = config.name ?? "workspace";
+  const serviceModules = modules.filter((m) => m.isService);
+  const libraryModules = modules.filter((m) => !m.isService);
 
   return {
     rootPath: basePath,
     groupId: "multi-project",
-    artifactId: "workspace",
+    artifactId,
     modules,
-    serviceModules: modules,
-    libraryModules: [],
-    dependencyGraph: {},
+    serviceModules,
+    libraryModules,
+    dependencyGraph: buildDependencyGraph(modules, "multi-project"),
   };
 }
 
 export async function pipeline(
-  projectPath: string,
-  options: { force?: boolean; config?: string }
+  projectPath: string | undefined,
+  options: { force?: boolean; config?: string; output?: string }
 ): Promise<void> {
   const startTime = Date.now();
 
-  const absProjectPath = resolve(projectPath);
-  console.log(t.version("0.5.1"));
+  const absProjectPath = resolve(projectPath ?? process.cwd());
+  console.log(t.version("0.6.0"));
   console.log(t.target(absProjectPath));
   console.log(t.store(`${resolve(absProjectPath, "..")}/${absProjectPath.split("/").pop()}-specs`));
   if (options.config) console.log(t.config(options.config));
+  if (options.output) console.log(`Output: ${options.output}`);
   console.log("");
 
   try {
     let projectInfo: ProjectInfo;
 
     if (options.config) {
-      // 8.3: 使用配置文件，跳过 Maven 检测
       const config = await loadConfig(options.config);
       const configDir = dirname(resolve(options.config));
-      projectInfo = buildProjectInfoFromConfig(config, absProjectPath, configDir);
+      projectInfo = await buildProjectInfoFromConfig(config, absProjectPath, configDir);
       console.log(t.loadedConfig(projectInfo.serviceModules.length));
     } else {
       // 8.4: 原有行为 - 自动检测 Maven 多模块项目

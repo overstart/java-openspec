@@ -194,7 +194,7 @@ export async function generateDocs(
     }
 
     const serviceModules = result.projectInfo.serviceModules.filter(
-      (svc) => svc.isService && svc.artifactId !== "mall-common"
+      (svc) => svc.isService
     );
     for (const svc of serviceModules) {
       const analysis = result.serviceAnalyses[svc.artifactId];
@@ -237,7 +237,7 @@ export async function generateDocs(
   }
 
   const serviceModules = result.projectInfo.serviceModules.filter(
-    (svc) => svc.isService && svc.artifactId !== "mall-common"
+    (svc) => svc.isService
   );
 
   const archResults = await Promise.all(

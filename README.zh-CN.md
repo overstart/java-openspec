@@ -129,6 +129,9 @@ java-openspec init /path/to/mall-swarm
 
 ```yaml
 # java-openspec.yml
+name: mall-specs             # 可选，store 名称（默认: workspace-specs）
+exclude:                     # 可选，要跳过的模块（精确名称匹配）
+  - mall-demo
 services:
   mall-admin: /home/liyf/gitrepo/mall-admin
   mall-portal: /home/liyf/gitrepo/mall-portal
@@ -136,7 +139,11 @@ services:
 ```
 
 ```bash
-java-openspec init /path/to/workspace --config java-openspec.yml
+# 与 --config 配合时 project-path 可省略（默认为当前目录）
+java-openspec init --config java-openspec.yml
+
+# 或显式指定输出目录
+java-openspec init --config java-openspec.yml --output /path/to/store
 ```
 
 ## 输出

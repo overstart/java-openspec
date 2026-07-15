@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import type { AnalysisResult, SpecDoc, DiagramFile } from "./types";
 import { t } from "./i18n";
 
@@ -13,11 +13,12 @@ export async function createStore(
   result: AnalysisResult,
   docs: SpecDoc[],
   diagrams: DiagramFile[],
-  options: { force?: boolean }
+  options: { force?: boolean; output?: string }
 ): Promise<string> {
   const { rootPath, artifactId } = result.projectInfo;
-  const parentPath = dirname(rootPath);
-  const storePath = join(parentPath, `${artifactId}-specs`);
+  const storePath = options.output
+    ? resolve(options.output)
+    : join(dirname(rootPath), `${artifactId}-specs`);
 
   // 6.1: 使用 openspec store setup 创建骨架
   console.log(t.storeCreating(storePath));

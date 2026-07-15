@@ -8,15 +8,16 @@ const program = new Command();
 program
   .name("java-openspec")
   .description(t.cliDescription)
-  .version("0.5.1");
+  .version("0.6.0");
 
 program
   .command("init")
   .description(t.initDescription)
-  .argument("<project-path>", t.initArg)
+  .argument("[project-path]", t.initArg)
   .option("--force", t.initForce)
   .option("--config <path>", t.initConfig)
-  .action(async (projectPath: string, options: { force?: boolean; config?: string }) => {
+  .option("--output <path>", t.initOutput)
+  .action(async (projectPath: string | undefined, options: { force?: boolean; config?: string; output?: string }) => {
     await pipeline(projectPath, options);
   });
 

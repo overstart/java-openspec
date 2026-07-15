@@ -45,7 +45,7 @@ function generateContextDiagram(result: AnalysisResult): string {
 
   for (const svc of serviceNames) {
     const key = svc.replace(/-/g, "_");
-    if (svc !== "mall-gateway" && svc !== "mall-monitor" && svc !== "mall-common" && svc !== "mall-demo" && svc !== "mall-mbg") {
+    if (!svc.includes("gateway") && !svc.includes("monitor") && !svc.includes("common") && !svc.includes("demo") && !svc.includes("mbg")) {
       lines.push(`    ${key} --> MySQL`);
       lines.push(`    ${key} --> Redis`);
     }
@@ -229,7 +229,7 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
 
   // 4.3: C4 Container per service
   for (const svc of result.projectInfo.serviceModules) {
-    if (!svc.isService || svc.artifactId === "mall-common") continue;
+    if (!svc.isService) continue;
     diagrams.push({
       filename: `${svc.artifactId}-container.mmd`,
       content: generateContainerDiagram(svc, result),
@@ -239,7 +239,7 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
 
   // 4.4: Sequence diagrams
   for (const svc of result.projectInfo.serviceModules) {
-    if (!svc.isService || svc.artifactId === "mall-common") continue;
+    if (!svc.isService) continue;
     diagrams.push({
       filename: `${svc.artifactId}-flow.mmd`,
       content: generateSequenceDiagram(svc, result),
