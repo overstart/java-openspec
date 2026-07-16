@@ -194,6 +194,8 @@ export async function pipeline(
     } else {
       console.log(t.noLlmNotice);
     }
+    // ACP 模式下 agent 子进程可能残留 handle，强制退出
+    process.exit(0);
   } catch (error) {
     console.error(`\n${t.errorPrefix}`, error instanceof Error ? error.message : String(error));
     console.error(t.failed);

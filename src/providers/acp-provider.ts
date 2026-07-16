@@ -12,23 +12,34 @@ export function parseAgentCommand(cmd: string): { command: string; args: string[
   return { command: parts[0]!, args: parts.slice(1) };
 }
 
-// 简易 spinner，无额外依赖
+// 简易 spinner，无额外依赖。共享单例，支持并行调用计数。
+let spinnerState: { count: number; msg: string; interval: ReturnType<typeof setInterval> | null } = {
+  count: 0,
+  msg: "",
+  interval: null,
+};
+
 function startSpinner(msg: string): (newMsg?: string) => void {
-  const frames = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
-  let i = 0;
-  let currentMsg = msg;
-  let stopped = false;
-  const interval = setInterval(() => {
-    if (stopped) return;
-    process.stdout.write(`\r${frames[i]} ${currentMsg}`);
-    i = (i + 1) % frames.length;
-  }, 80);
+  spinnerState.count++;
+  if (spinnerState.count === 1) {
+    spinnerState.msg = msg;
+    const frames = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
+    let i = 0;
+    spinnerState.interval = setInterval(() => {
+      process.stdout.write(`\r${frames[i]} ${spinnerState.msg}`);
+      i = (i + 1) % frames.length;
+    }, 80);
+  }
   return (newMsg?: string) => {
-    if (newMsg !== undefined) currentMsg = newMsg;
-    else {
-      stopped = true;
-      clearInterval(interval);
-      process.stdout.write(`\r${" ".repeat(currentMsg.length + 2)}\r`);
+    if (newMsg !== undefined && spinnerState.interval) {
+      spinnerState.msg = newMsg;
+    } else {
+      spinnerState.count = Math.max(0, spinnerState.count - 1);
+      if (spinnerState.count === 0 && spinnerState.interval) {
+        clearInterval(spinnerState.interval);
+        spinnerState.interval = null;
+        process.stdout.write(`\r${" ".repeat(spinnerState.msg.length + 2)}\r`);
+      }
     }
   };
 }
@@ -56,6 +67,7 @@ export class ACPProvider implements LLMProvider {
 
     this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "inherit"],
+      detached: true,
     });
 
     this.process.on("error", (err) => {
@@ -171,18 +183,21 @@ export class ACPProvider implements LLMProvider {
     this.connection?.close();
     this.connection = null;
     if (this.process) {
-      // 先 SIGTERM，再销毁 stdio 流防止 event loop 挂起
       this.process.stdin?.destroy();
       this.process.stdout?.destroy();
-      this.process.kill("SIGTERM");
-      // 500ms 后仍存活则 SIGKILL
+      try {
+        // 杀整个进程组（detached 模式下 agent 可能有子进程）
+        process.kill(-this.process.pid!, "SIGTERM");
+      } catch {
+        try { this.process.kill("SIGTERM"); } catch {}
+      }
       setTimeout(() => {
         try {
           if (this.process && !this.process.killed) {
-            this.process.kill("SIGKILL");
+            process.kill(-this.process.pid!, "SIGKILL");
           }
         } catch {
-          // 进程已退出
+          try { this.process?.kill("SIGKILL"); } catch {}
         }
       }, 500).unref();
       this.process = null;
