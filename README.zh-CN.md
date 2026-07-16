@@ -150,19 +150,27 @@ java-openspec init --config java-openspec.yml --output /path/to/store
 
 ```
 <project>-specs/
-├── store.yaml
+├── .openspec-store/
+│   └── store.yaml               # Store 元数据 + remote URL
 └── openspec/
-    └── specs/
-        ├── overview.md           # 全局项目总览
+    ├── config.yaml              # 自动填充 context + rules（供 AI 工具使用）
+    ├── specs/                   # OpenSpec 需求规格（免 LLM 生成）
+    │   ├── coding-conventions/spec.md
+    │   ├── service-architecture/spec.md
+    │   └── security-patterns/spec.md
+    └── docs/
+        ├── overview.md           # 全局项目总览（含交叉引用）
         ├── coding-style.md       # 全局编码规范
         ├── architecture.md       # 全局架构规范
         ├── security.md           # 全局安全规范
+        ├── business-domains.md   # 业务域映射（免 LLM）
+        ├── api-contracts.md      # API 端点 + Feign 客户端
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
+        │   ├── data-flow.mmd             # 数据流图
         │   ├── <service>-container.mmd   # C4 Container
         │   └── <service>-flow.mmd        # 业务时序图
         └── <service>/
-            ├── overview.md
             └── architecture.md
 ```
 

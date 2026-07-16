@@ -150,15 +150,24 @@ java-openspec init --config java-openspec.yml --output /path/to/store
 
 ```
 <project>-specs/
-├── store.yaml
+├── .openspec-store/
+│   └── store.yaml               # Store metadata + remote URL
 └── openspec/
+    ├── config.yaml              # Auto-filled context + rules for AI tools
+    ├── specs/                   # OpenSpec requirement specs (no LLM)
+    │   ├── coding-conventions/spec.md
+    │   ├── service-architecture/spec.md
+    │   └── security-patterns/spec.md
     └── docs/
-        ├── overview.md           # Global project overview
+        ├── overview.md           # Global project overview (+ cross-refs)
         ├── coding-style.md       # Global coding conventions
         ├── architecture.md       # Global architecture spec
         ├── security.md           # Global security spec
+        ├── business-domains.md   # Business domain mapping (no LLM)
+        ├── api-contracts.md      # API endpoints + Feign clients
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
+        │   ├── data-flow.mmd             # Data flow diagram
         │   ├── <service>-container.mmd   # C4 Container
         │   └── <service>-flow.mmd        # Business sequence diagram
         └── <service>/
