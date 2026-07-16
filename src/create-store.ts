@@ -187,12 +187,14 @@ export function generateReport(
     `  - architecture.md`,
     `  - security.md`,
     `  - business-domains.md`,
-    `  - api-contracts.md`,
     "",
     t.reportServiceSpecs,
     ...result.projectInfo.serviceModules
       
       .map((m) => `  - ${m.artifactId}/architecture.md`),
+    ...result.projectInfo.serviceModules
+      .filter((m) => result.serviceAnalyses[m.artifactId]?.controllers.length)
+      .map((m) => `  - ${m.artifactId}/api-contracts.md`),
     "",
     "=".repeat(60),
   ];

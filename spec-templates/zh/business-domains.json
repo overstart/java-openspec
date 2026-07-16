@@ -1,0 +1,8 @@
+{
+  "requiredSections": ["业务领域概述", "领域服务映射"],
+  "requiredTables": ["领域服务"],
+  "headingLevels": {
+    "业务领域概述": 3,
+    "领域服务映射": 3
+  }
+}

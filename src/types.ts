@@ -52,6 +52,8 @@ export interface MethodInfo {
   httpMethod: string;
   path: string;
   returnType: string;
+  requestParams: string;
+  authRequired: string;
 }
 
 export interface ServiceInfo {

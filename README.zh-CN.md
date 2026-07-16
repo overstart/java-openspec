@@ -164,14 +164,15 @@ java-openspec init --config java-openspec.yml --output /path/to/store
         ├── architecture.md       # 全局架构规范
         ├── security.md           # 全局安全规范
         ├── business-domains.md   # 业务域映射（免 LLM）
-        ├── api-contracts.md      # API 端点 + Feign 客户端
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
         │   ├── data-flow.mmd             # 数据流图
         │   ├── <service>-container.mmd   # C4 Container
         │   └── <service>-flow.mmd        # 业务时序图
         └── <service>/
-            └── architecture.md
+            ├── architecture.md
+            ├── business-domains.md       # 按服务业务域概览
+            └── api-contracts.md          # 按服务 API 端点 + Feign 客户端
 ```
 
 ## 工作流程

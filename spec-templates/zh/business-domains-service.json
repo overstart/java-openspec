@@ -1,0 +1,8 @@
+{
+  "requiredSections": ["按领域分组 Controller", "领域 API 汇总"],
+  "requiredTables": ["领域 API 汇总"],
+  "headingLevels": {
+    "按领域分组 Controller": 3,
+    "领域 API 汇总": 3
+  }
+}

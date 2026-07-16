@@ -1,0 +1,8 @@
+{
+  "requiredSections": ["Business Domain Overview", "Domain Service Mapping"],
+  "requiredTables": ["Domain Services"],
+  "headingLevels": {
+    "Business Domain Overview": 3,
+    "Domain Service Mapping": 3
+  }
+}

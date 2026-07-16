@@ -1,0 +1,8 @@
+{
+  "requiredSections": ["Controllers by Domain", "Domain API Summary"],
+  "requiredTables": ["Domain API Summary"],
+  "headingLevels": {
+    "Controllers by Domain": 3,
+    "Domain API Summary": 3
+  }
+}

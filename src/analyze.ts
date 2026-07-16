@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { glob } from "bun";
 import { t } from "./i18n";
 import type {
   AnalysisResult,
@@ -11,6 +10,7 @@ import type {
   NamingPattern,
   AnnotationUsage,
   ControllerInfo,
+  MethodInfo,
   ServiceInfo,
   CallPath,
   FeignClientInfo,
@@ -186,17 +186,64 @@ async function analyzeServiceDetail(
   const controllerClasses = classes.filter((c) => c.endsWith("Controller"));
 
   const controllers: ControllerInfo[] = [];
-  for (const className of controllerClasses) {
-    controllers.push({
-      className,
-      requestMapping: "",
-      methods: [],
-    });
+
+  // 使用 codegraph 提取 Controller 方法信息（已内置 Spring 支持）
+  if (controllerClasses.length > 0) {
+    const ctrlQuery = controllerClasses.join(" ");
+    const output = explore(modulePath, ctrlQuery);
+
+    for (const className of controllerClasses) {
+      const methods: MethodInfo[] = [];
+      let requestMapping = "";
+
+      // 提取类级别的 @RequestMapping（注解在类声明上方，需向前查找）
+      const classIdx = output.indexOf(className);
+      if (classIdx >= 0) {
+        const beforeClass = output.slice(Math.max(0, classIdx - 500), classIdx);
+        const rmMatch = beforeClass.match(/@RequestMapping\s*\(\s*(?:value\s*=\s*)?["']([^"']+)["']/);
+        if (rmMatch) requestMapping = rmMatch[1]!;
+      }
+
+      // 提取方法级别的注解 - codegraph 输出包含方法签名和注解
+      const methodRe = /@(Get|Post|Put|Delete|Patch|Request)Mapping\s*\(\s*(?:value\s*=\s*)?["']?([^"')\s]*)?["']?[^)]*\)[\s\S]*?\n\s*(?:@\w+(?:\([^)]*\))?\s*\n\s*)*public\s+(\S+)\s+(\w+)\s*\(([^)]*)\)/g;
+      let methodMatch: RegExpExecArray | null;
+      while ((methodMatch = methodRe.exec(output)) !== null) {
+        const httpMethod = methodMatch[1] === "Request" ? "GET" : methodMatch[1]!.toUpperCase();
+        const returnType = methodMatch[3]!;
+        const methodName = methodMatch[4]!;
+        const paramsPart = methodMatch[5]!;
+
+        // 提取参数列表（简化：只取参数类型名）
+        const params = paramsPart.split(",").map(p => p.trim()).filter(Boolean).map(p => {
+          const parts = p.split(/\s+/);
+          return parts.length >= 2 ? parts[parts.length - 2]! : "";
+        }).filter(Boolean).join(", ");
+
+        // 检查该方法的上下文是否有 @PreAuthorize 注解
+        const methodStart = methodMatch.index;
+        const methodBlock = output.slice(Math.max(0, methodStart - 100), methodStart + 200);
+        const hasAuth = /@PreAuthorize/.test(methodBlock);
+
+        methods.push({
+          name: methodName,
+          httpMethod,
+          path: methodMatch[2] || "",
+          returnType,
+          requestParams: params || "(none)",
+          authRequired: hasAuth ? "Yes" : "No",
+        });
+      }
+
+      controllers.push({
+        className,
+        requestMapping,
+        methods,
+      });
+    }
   }
 
   // 提取 Service 接口和实现
   const serviceClasses = classes.filter((c) => c.endsWith("Service") && !c.endsWith("ServiceImpl"));
-  const serviceImplClasses = classes.filter((c) => c.endsWith("ServiceImpl"));
 
   const services: ServiceInfo[] = [];
   for (const svc of serviceClasses) {

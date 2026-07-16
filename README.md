@@ -164,14 +164,15 @@ java-openspec init --config java-openspec.yml --output /path/to/store
         ├── architecture.md       # Global architecture spec
         ├── security.md           # Global security spec
         ├── business-domains.md   # Business domain mapping (no LLM)
-        ├── api-contracts.md      # API endpoints + Feign clients
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
         │   ├── data-flow.mmd             # Data flow diagram
         │   ├── <service>-container.mmd   # C4 Container
         │   └── <service>-flow.mmd        # Business sequence diagram
         └── <service>/
-            └── architecture.md
+            ├── architecture.md
+            ├── business-domains.md       # Per-service business domain overview
+            └── api-contracts.md          # Per-service API endpoints + Feign clients
 ```
 
 ## Pipeline
