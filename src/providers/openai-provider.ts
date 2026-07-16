@@ -1,6 +1,10 @@
 import OpenAI from "openai";
 import type { LLMProvider, TokenUsage } from "../types";
 import { stripPreamble } from "../postprocess";
+import { startSpinner } from "./spinner";
+import { lang } from "../i18n";
+
+const SPINNER_GENERATING = lang === "zh" ? "\u751f\u6210\u4e2d..." : "Generating...";
 
 // 从 generate-docs.ts 提取的 OpenAI provider，保持原有行为
 export class OpenAIProvider implements LLMProvider {
@@ -29,23 +33,28 @@ export class OpenAIProvider implements LLMProvider {
     systemPrompt: string,
     userContent: string
   ): Promise<{ content: string; usage: TokenUsage }> {
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent },
-      ],
-      max_tokens: this.maxTokens,
-      temperature: this.temperature,
-    });
+    const spinner = startSpinner(SPINNER_GENERATING);
+    try {
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+        max_tokens: this.maxTokens,
+        temperature: this.temperature,
+      });
 
-    const content = response.choices[0]?.message?.content ?? "";
-    const usage: TokenUsage = {
-      promptTokens: response.usage?.prompt_tokens ?? 0,
-      completionTokens: response.usage?.completion_tokens ?? 0,
-      totalTokens: response.usage?.total_tokens ?? 0,
-    };
+      const content = response.choices[0]?.message?.content ?? "";
+      const usage: TokenUsage = {
+        promptTokens: response.usage?.prompt_tokens ?? 0,
+        completionTokens: response.usage?.completion_tokens ?? 0,
+        totalTokens: response.usage?.total_tokens ?? 0,
+      };
 
-    return { content: stripPreamble(content), usage };
+      return { content: stripPreamble(content), usage };
+    } finally {
+      spinner();
+    }
   }
 }
