@@ -4,13 +4,38 @@ import { readFile } from "node:fs/promises";
 import * as acp from "@agentclientprotocol/sdk";
 import type { LLMProvider, TokenUsage } from "../types";
 import { stripPreamble } from "../postprocess";
-import { t } from "../i18n";
+import { t, lang } from "../i18n";
 
 // 解析 ACP_AGENT_CMD 为命令 + 参数
 export function parseAgentCommand(cmd: string): { command: string; args: string[] } {
   const parts = cmd.trim().split(/\s+/);
   return { command: parts[0]!, args: parts.slice(1) };
 }
+
+// 简易 spinner，无额外依赖
+function startSpinner(msg: string): (newMsg?: string) => void {
+  const frames = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
+  let i = 0;
+  let currentMsg = msg;
+  let stopped = false;
+  const interval = setInterval(() => {
+    if (stopped) return;
+    process.stdout.write(`\r${frames[i]} ${currentMsg}`);
+    i = (i + 1) % frames.length;
+  }, 80);
+  return (newMsg?: string) => {
+    if (newMsg !== undefined) currentMsg = newMsg;
+    else {
+      stopped = true;
+      clearInterval(interval);
+      process.stdout.write(`\r${" ".repeat(currentMsg.length + 2)}\r`);
+    }
+  };
+}
+
+const SPINNER_GENERATING = lang === "zh" ? "\u751f\u6210\u4e2d..." : "Generating...";
+const SPINNER_THINKING = lang === "zh" ? "Agent \u601d\u8003\u4e2d..." : "Agent thinking...";
+const SPINNER_TOOL = lang === "zh" ? "Agent \u4f7f\u7528\u5de5\u5177: " : "Agent using tool: ";
 
 // ACP provider: 通过 stdio 连接 ACP 兼容 agent，无需 API key
 export class ACPProvider implements LLMProvider {
@@ -97,6 +122,8 @@ export class ACPProvider implements LLMProvider {
     try {
       session.prompt(fullPrompt);
 
+      const spinner = startSpinner(SPINNER_GENERATING);
+
       // 收集 agent_message_chunk 中的 Text 块
       let content = "";
       let usage: TokenUsage = {
@@ -124,9 +151,14 @@ export class ACPProvider implements LLMProvider {
           update.content.type === "text"
         ) {
           content += update.content.text;
+        } else if (update.sessionUpdate === "tool_call") {
+          spinner(`${SPINNER_TOOL}${update.title ?? ""}`);
+        } else if (update.sessionUpdate === "agent_thought_chunk") {
+          spinner(SPINNER_THINKING);
         }
       }
 
+      spinner();
       return { content: stripPreamble(content), usage };
     } finally {
       session.dispose();
