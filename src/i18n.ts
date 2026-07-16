@@ -91,6 +91,14 @@ export interface Messages {
   // no-LLM mode
   noLlmHeader: string;
   noLlmNotice: string;
+  // docs-enhancement: business-domains, cross-refs, data-flow
+  lblBusinessDomains: string;
+  lblUnknownDomain: string;
+  lblRelatedDocs: string;
+  lblGeneratingDataFlow: string;
+  lblRestApi: string;
+  lblFeignInterfaces: string;
+  lblApiVersioning: string;
 
   // analysis data labels
   lblProjectInfo: string;
@@ -213,6 +221,13 @@ const en: Messages = {
 
   noLlmHeader: "<!-- Generated without LLM, contains CodeGraph analysis data only -->",
   noLlmNotice: "\n  \u26a0 Specs generated without LLM. Documents contain CodeGraph analysis data only.\n  Configure OPENAI_API_KEY or ACP_AGENT_CMD to regenerate with LLM.\n",
+  lblBusinessDomains: "Business Domains",
+  lblUnknownDomain: "Unknown domain",
+  lblRelatedDocs: "Related Documents",
+  lblGeneratingDataFlow: "  Generating data flow diagram...",
+  lblRestApi: "REST API Endpoints",
+  lblFeignInterfaces: "Feign Client Interfaces",
+  lblApiVersioning: "API Versioning",
 
   lblProjectInfo: "## Project Info",
   lblTechStack: "### Tech Stack",
@@ -332,6 +347,14 @@ const zh: Messages = {
 
   noLlmHeader: "<!-- 未经 LLM 生成，仅含 CodeGraph 分析数据 -->",
   noLlmNotice: "\n  ⚠ 本次生成未经 LLM 润色，spec 文档仅包含 CodeGraph 分析数据。\n  配置 OPENAI_API_KEY 或 ACP_AGENT_CMD 后可重新生成。\n",
+
+  lblBusinessDomains: "业务域",
+  lblUnknownDomain: "未知业务域",
+  lblRelatedDocs: "相关文档",
+  lblGeneratingDataFlow: "  生成数据流图...",
+  lblRestApi: "REST API 端点",
+  lblFeignInterfaces: "Feign 客户端接口",
+  lblApiVersioning: "API 版本管理",
 
   lblProjectInfo: "## 项目信息",
   lblTechStack: "### 技术栈",

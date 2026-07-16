@@ -1,0 +1,9 @@
+{
+  "requiredSections": ["REST API Endpoints", "Feign Client Interfaces", "API Versioning"],
+  "requiredTables": ["REST API Endpoints", "Feign Client Interfaces"],
+  "headingLevels": {
+    "REST API Endpoints": 3,
+    "Feign Client Interfaces": 3,
+    "API Versioning": 3
+  }
+}

@@ -166,6 +166,94 @@ function formatServiceContext(svc: import("./types").MavenModule, analysis: impo
   ].join("\n");
 }
 
+
+// 业务前缀字典
+const DOMAIN_PREFIXES: Record<string, { en: string; zh: string }> = {
+  Pms: { en: "Product Management", zh: "商品管理" },
+  Oms: { en: "Order Management", zh: "订单管理" },
+  Ums: { en: "User Management", zh: "用户管理" },
+  Sms: { en: "Sales/Marketing Management", zh: "营销管理" },
+  Es: { en: "Elasticsearch Search", zh: "搜索" },
+  Cms: { en: "Content Management", zh: "内容管理" },
+};
+
+// 免 LLM 生成 business-domains.md
+function generateBusinessDomains(result: AnalysisResult): string {
+  const { globalPatterns, serviceAnalyses } = result;
+  const prefixes = globalPatterns.businessPrefixes;
+  const lines: string[] = [`## ${t.lblBusinessDomains}`];
+
+  // 收集所有 Controller 和 Service 类名
+  const allControllers: string[] = [];
+  const allServices: string[] = [];
+  for (const analysis of Object.values(serviceAnalyses)) {
+    allControllers.push(...(analysis?.controllers.map(c => c.className) ?? []));
+    allServices.push(...(analysis?.services.map(s => s.interfaceName) ?? []));
+  }
+
+  for (const prefix of prefixes) {
+    const domain = DOMAIN_PREFIXES[prefix];
+    const domainName = domain ? domain[lang === "zh" ? "zh" : "en"] : t.lblUnknownDomain;
+    lines.push(`\n### ${prefix} (${domainName})`);
+
+    const prefixControllers = allControllers.filter(c => c.startsWith(prefix));
+    const prefixServices = allServices.filter(s => s.startsWith(prefix));
+
+    if (prefixControllers.length > 0) {
+      lines.push(`- Controllers: ${prefixControllers.join(", ")}`);
+    }
+    if (prefixServices.length > 0) {
+      lines.push(`- Services: ${prefixServices.join(", ")}`);
+    }
+    if (prefixControllers.length === 0 && prefixServices.length === 0) {
+      lines.push(`- (no matching classes found)`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+// 无 LLM 模式生成 api-contracts.md
+function generateApiContractsRaw(result: AnalysisResult): string {
+  const { serviceAnalyses } = result;
+  const lines: string[] = [`## ${t.lblRestApi}`];
+
+  for (const [svcName, analysis] of Object.entries(serviceAnalyses)) {
+    for (const ctrl of analysis?.controllers ?? []) {
+      lines.push(`\n### ${ctrl.className}`);
+      lines.push(`- Methods: ${ctrl.methods.length}`);
+      if (ctrl.requestMapping) {
+        lines.push(`- Base path: ${ctrl.requestMapping}`);
+      }
+    }
+  }
+
+  // Feign 客户端
+  const allFeignClients = Object.values(serviceAnalyses)
+    .flatMap(a => a?.feignClients ?? []);
+  if (allFeignClients.length > 0) {
+    lines.push(`\n## ${t.lblFeignInterfaces}`);
+    for (const fc of allFeignClients) {
+      lines.push(`- ${fc.className} -> ${fc.targetService}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+// 添加交叉引用
+function addCrossReferences(content: string): string {
+  const links = [
+    `[architecture.md](architecture.md)`,
+    `[coding-style.md](coding-style.md)`,
+    `[security.md](security.md)`,
+    `[business-domains.md](business-domains.md)`,
+    `[api-contracts.md](api-contracts.md)`,
+  ].join("\n- ");
+
+  return `${content}\n\n## ${t.lblRelatedDocs}\n- ${links}\n`;
+}
+
 export async function generateDocs(
   result: AnalysisResult,
   diagrams: DiagramFile[]
@@ -207,12 +295,34 @@ export async function generateDocs(
       });
     }
 
+    // business-domains.md (免 LLM)
+    console.log(t.generatingDoc("business-domains"));
+    docs.push({
+      filename: "business-domains.md",
+      content: `${t.noLlmHeader}\n\n${generateBusinessDomains(result)}`,
+      path: "openspec/docs/business-domains.md",
+    });
+
+    // api-contracts.md (无 LLM 原始数据)
+    console.log(t.generatingDoc("api-contracts"));
+    docs.push({
+      filename: "api-contracts.md",
+      content: `${t.noLlmHeader}\n\n${generateApiContractsRaw(result)}`,
+      path: "openspec/docs/api-contracts.md",
+    });
+
+    // 交叉引用: 追加到 overview.md
+    const overviewDoc = docs.find(d => d.filename === "overview.md");
+    if (overviewDoc) {
+      overviewDoc.content = addCrossReferences(overviewDoc.content);
+    }
+
     console.log(t.generatedDocs(docs.length));
     return { docs, totalUsage };
   }
 
   // === LLM 模式: 当前行为 ===
-  const specTypes = ["overview", "coding-style", "architecture", "security"] as const;
+  const specTypes = ["overview", "coding-style", "architecture", "security", "api-contracts"] as const;
   const globalResults = await Promise.all(
     specTypes.map(async (name) => {
       console.log(t.generatingDoc(name));
@@ -234,6 +344,20 @@ export async function generateDocs(
       content: r.content,
       path: `openspec/docs/${r.name}.md`,
     });
+  }
+
+  // business-domains.md (免 LLM, 直揮生成)
+  console.log(t.generatingDoc("business-domains"));
+  docs.push({
+    filename: "business-domains.md",
+    content: generateBusinessDomains(result),
+    path: "openspec/docs/business-domains.md",
+  });
+
+  // 交叉引用: 追加到 overview.md
+  const overviewDoc = docs.find(d => d.filename === "overview.md");
+  if (overviewDoc) {
+    overviewDoc.content = addCrossReferences(overviewDoc.content);
   }
 
   const serviceModules = result.projectInfo.serviceModules.filter(

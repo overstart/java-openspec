@@ -1,0 +1,9 @@
+{
+  "requiredSections": ["REST API 端点", "Feign 客户端接口", "API 版本管理"],
+  "requiredTables": ["REST API 端点", "Feign 客户端接口"],
+  "headingLevels": {
+    "REST API 端点": 3,
+    "Feign 客户端接口": 3,
+    "API 版本管理": 3
+  }
+}

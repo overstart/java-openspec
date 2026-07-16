@@ -216,6 +216,36 @@ function generateSequenceDiagram(
   return lines.join("\n");
 }
 
+// 生成数据流图
+function generateDataFlowDiagram(result: AnalysisResult): string {
+  const { serviceAnalyses } = result;
+  const lines = ["flowchart LR"];
+
+  // 收集所有 Feign 客户端
+  const feignCalls: Array<{ from: string; to: string }> = [];
+  for (const [svcName, analysis] of Object.entries(serviceAnalyses)) {
+    for (const fc of analysis?.feignClients ?? []) {
+      feignCalls.push({ from: svcName, to: fc.targetService });
+    }
+  }
+
+  // 标准数据流
+  lines.push("    Client --> Controller");
+  lines.push("    Controller --> Service");
+  lines.push("    Service --> DAO");
+  lines.push("    DAO --> DB[(MySQL)]");
+  lines.push("    Service --> Redis[(Redis)]");
+
+  // Feign 跨服务调用
+  for (const call of feignCalls) {
+    const fromKey = call.from.replace(/-/g, "_");
+    const toKey = call.to.replace(/-/g, "_");
+    lines.push(`    ${fromKey}[${call.from}] -.->|Feign| ${toKey}[${call.to}]`);
+  }
+
+  return lines.join("\n");
+}
+
 export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
   const diagrams: DiagramFile[] = [];
 
@@ -227,7 +257,15 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
     type: "flowchart",
   });
 
-  // 4.3: C4 Container per service
+  // 4.3: Data flow diagram
+  console.log(t.lblGeneratingDataFlow);
+  diagrams.push({
+    filename: "data-flow.mmd",
+    content: generateDataFlowDiagram(result),
+    type: "flowchart",
+  });
+
+  // 4.4: C4 Container per service
   for (const svc of result.projectInfo.serviceModules) {
     if (!svc.isService) continue;
     diagrams.push({
@@ -237,7 +275,7 @@ export function generateDiagrams(result: AnalysisResult): DiagramFile[] {
     });
   }
 
-  // 4.4: Sequence diagrams
+  // 4.5: Sequence diagrams
   for (const svc of result.projectInfo.serviceModules) {
     if (!svc.isService) continue;
     diagrams.push({
