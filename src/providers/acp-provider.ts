@@ -120,9 +120,8 @@ export class ACPProvider implements LLMProvider {
 
     const session = await ctx.buildSession(process.cwd()).start();
     try {
-      session.prompt(fullPrompt);
-
       const spinner = startSpinner(SPINNER_GENERATING);
+      session.prompt(fullPrompt);
 
       // 收集 agent_message_chunk 中的 Text 块
       let content = "";
@@ -132,33 +131,36 @@ export class ACPProvider implements LLMProvider {
         totalTokens: 0,
       };
 
-      for (;;) {
-        const message = await session.nextUpdate();
-        if (message.kind === "stop") {
-          // ACP 协议可能返回 usage，有则用真实数据
-          if (message.response.usage) {
-            usage = {
-              promptTokens: message.response.usage.inputTokens,
-              completionTokens: message.response.usage.outputTokens,
-              totalTokens: message.response.usage.totalTokens,
-            };
+      try {
+        for (;;) {
+          const message = await session.nextUpdate();
+          if (message.kind === "stop") {
+            // ACP 协议可能返回 usage，有则用真实数据
+            if (message.response.usage) {
+              usage = {
+                promptTokens: message.response.usage.inputTokens,
+                completionTokens: message.response.usage.outputTokens,
+                totalTokens: message.response.usage.totalTokens,
+              };
+            }
+            break;
           }
-          break;
+          const { update } = message;
+          if (
+            update.sessionUpdate === "agent_message_chunk" &&
+            update.content.type === "text"
+          ) {
+            content += update.content.text;
+          } else if (update.sessionUpdate === "tool_call") {
+            spinner(`${SPINNER_TOOL}${update.title ?? ""}`);
+          } else if (update.sessionUpdate === "agent_thought_chunk") {
+            spinner(SPINNER_THINKING);
+          }
         }
-        const { update } = message;
-        if (
-          update.sessionUpdate === "agent_message_chunk" &&
-          update.content.type === "text"
-        ) {
-          content += update.content.text;
-        } else if (update.sessionUpdate === "tool_call") {
-          spinner(`${SPINNER_TOOL}${update.title ?? ""}`);
-        } else if (update.sessionUpdate === "agent_thought_chunk") {
-          spinner(SPINNER_THINKING);
-        }
+      } finally {
+        spinner();
       }
 
-      spinner();
       return { content: stripPreamble(content), usage };
     } finally {
       session.dispose();
@@ -169,7 +171,20 @@ export class ACPProvider implements LLMProvider {
     this.connection?.close();
     this.connection = null;
     if (this.process) {
-      this.process.kill();
+      // 先 SIGTERM，再销毁 stdio 流防止 event loop 挂起
+      this.process.stdin?.destroy();
+      this.process.stdout?.destroy();
+      this.process.kill("SIGTERM");
+      // 500ms 后仍存活则 SIGKILL
+      setTimeout(() => {
+        try {
+          if (this.process && !this.process.killed) {
+            this.process.kill("SIGKILL");
+          }
+        } catch {
+          // 进程已退出
+        }
+      }, 500).unref();
       this.process = null;
     }
   }
