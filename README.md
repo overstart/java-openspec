@@ -8,22 +8,23 @@ A CLI tool that auto-generates OpenSpec stores from Java Spring Cloud projects.
 
 - Auto-detect Spring Boot microservice modules from Maven multi-module projects
 - Extract project structure, naming conventions, and code patterns via CodeGraph AST analysis
-- Generate spec documents using LLM (overview, coding-style, architecture, security)
+- Generate spec documents using LLM (overview, coding-style, architecture, security) or no-LLM raw data mode
+- Generate per-service `business-domains.md` with method-level tables and a global domain index
+- Generate per-service `api-contracts.md` with full endpoint details
 - Generate C4 architecture diagrams + sequence diagrams using Mermaid
-- Output as OpenSpec 1.5.0 store with automatic registration
+- Output as OpenSpec 1.7.0 store with automatic registration
 
 ## Prerequisites
 
 | Tool | Min Version | Purpose | Check Command |
 |------|-------------|---------|---------------|
 | [Bun](https://bun.sh) | 1.3 | Runtime | `bun --version` |
-| [CodeGraph](https://github.com/colbymchenry/codegraph) | 1.4 | Java AST analysis | `codegraph --version` |
-| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.6 | Store creation & registration | `openspec --version` |
+| [CodeGraph](https://github.com/colbymchenry/codegraph) | 1.5 | Java AST analysis | `codegraph --version` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.7 | Store creation & registration | `openspec --version` |
 
 ### Install CodeGraph
 
 ```bash
-# After installation, run codegraph init on the target project to build the index
 codegraph --version
 ```
 
@@ -59,7 +60,6 @@ java-openspec --version
 # Global config (recommended)
 mkdir -p ~/.config/java-openspec
 cp .env.example ~/.config/java-openspec/.env
-# Edit ~/.config/java-openspec/.env with your API key
 ```
 
 Two LLM backends are supported:
@@ -73,11 +73,6 @@ Uses OpenAI API format, compatible with any OpenAI-compatible service. Requires 
 OPENAI_API_KEY=sk-xxx
 LLM_MODEL=gpt-4o-mini
 LLM_BASE_URL=https://api.openai.com/v1
-
-# .env example - Volcengine Ark
-# OPENAI_API_KEY=your-ark-key
-# LLM_MODEL=deepseek-v4-flash
-# LLM_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
 ```
 
 ### ACP Mode (no API key needed)
@@ -107,13 +102,14 @@ flowchart TB
 
     CP -->|"OPENAI_API_KEY set"| OAI["OpenAIProvider<br/>HTTP API + API key"]
     CP -->|"No key, ACP_AGENT_CMD set"| ACP["ACPProvider<br/>stdio + agent subprocess"]
-    CP -->|"Neither set"| ERR["Error: No LLM provider"]
+    CP -->|"Neither set"| NL["No-LLM mode<br/>Raw analysis data output"]
 
     OAI -->|"4+N parallel HTTP requests"| API["OpenAI-compatible API"]
     ACP -->|"4+N parallel sessions"| AGENT["ACP Agent<br/>opencode acp / claude-code-acp / ..."]
+    NL -->|"Direct extraction"| RAW["Built-in templates + prefix mapping"]
 ```
 
-The provider abstraction (`src/providers/`) decouples LLM calls from the pipeline. `generate-docs.ts` calls `createProvider()` which selects the backend based on environment variables. The pipeline and all other modules remain unchanged.
+The provider abstraction (`src/providers/`) decouples LLM calls from the pipeline. When no LLM is configured, java-openspec falls back to no-LLM mode, outputting structured analysis data directly.
 
 ## Usage
 
@@ -160,33 +156,33 @@ java-openspec init --config java-openspec.yml --output /path/to/store
     │   └── security-patterns/spec.md
     └── docs/
         ├── overview.md           # Global project overview (+ cross-refs)
-        ├── coding-style.md       # Global coding conventions
-        ├── architecture.md       # Global architecture spec
-        ├── security.md           # Global security spec
-        ├── business-domains.md   # Business domain mapping (no LLM)
+        ├── coding-style.md       # Global coding conventions (LLM or raw)
+        ├── architecture.md       # Global architecture spec (LLM or raw)
+        ├── security.md           # Global security spec (LLM or raw)
+        ├── business-domains.md   # Domain index (no LLM, auto-generated)
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
         │   ├── data-flow.mmd             # Data flow diagram
-        │   ├── <service>-container.mmd   # C4 Container
+        │   ├── <service>-container.mmd   # C4 Container (role-aware)
         │   └── <service>-flow.mmd        # Business sequence diagram
         └── <service>/
             ├── architecture.md
-            ├── business-domains.md       # Per-service business domain overview
-            └── api-contracts.md          # Per-service API endpoints + Feign clients
+            ├── business-domains.md       # Per-service method-level overview
+            └── api-contracts.md          # Per-service API endpoints + Feign
 ```
 
 ## Pipeline
 
 ```
-detect -> analyze -> generate-diagrams -> generate-docs -> create-store -> validate
+detect → analyze → generate-diagrams → generate-docs → create-store → validate
 ```
 
-1. **detect** - Scan pom.xml, identify microservice modules vs library modules
-2. **analyze** - CodeGraph index + file scan, extract naming patterns, call paths, security patterns
-3. **generate-diagrams** - Mermaid flowchart/sequenceDiagram generation
-4. **generate-docs** - LLM generates spec documents from analysis + templates
-5. **create-store** - Call openspec CLI to create store and register
-6. **validate** - openspec store doctor validation
+1. **detect** — Scan pom.xml, identify microservice modules vs library modules
+2. **analyze** — CodeGraph index + file scan, extract naming patterns, call paths, security patterns
+3. **generate-diagrams** — Mermaid flowchart/sequenceDiagram generation (dynamic, role-aware)
+4. **generate-docs** — LLM or no-LLM generates spec documents from analysis + templates
+5. **create-store** — Call openspec CLI to create store, register, and validate
+6. **validate** — openspec store doctor validation
 
 ## Project Structure
 
@@ -195,19 +191,20 @@ src/
 ├── index.ts              # CLI entry point
 ├── pipeline.ts           # Main pipeline orchestration
 ├── detect.ts             # Maven project detection
-├── analyze.ts            # CodeGraph analysis
-├── generate-diagrams.ts  # Mermaid diagram generation
-├── generate-docs.ts      # LLM document generation
+├── analyze.ts            # CodeGraph analysis (annotation extraction via codegraph explore)
+├── generate-diagrams.ts  # Mermaid diagram generation (role-aware, dynamic)
+├── generate-docs.ts      # LLM / no-LLM document generation
 ├── providers/            # LLM provider abstraction
 │   ├── index.ts          # createProvider() selection logic
 │   ├── openai-provider.ts # OpenAI backend
 │   └── acp-provider.ts   # ACP (Agent Client Protocol) backend
-├── create-store.ts       # OpenSpec store creation
+├── create-store.ts       # OpenSpec store creation + spec generation
 ├── postprocess.ts        # LLM output post-processing
 ├── env.ts                # .env loading
 ├── pricing.ts            # Token cost estimation
+├── i18n.ts               # Chinese/English internationalization
 └── types.ts              # Type definitions
-templates/                # LLM prompt templates
+templates/                # LLM prompt templates (zh/en)
 spec-templates/           # Spec structure validation schemas
 test/                     # Unit tests
 ```
@@ -217,7 +214,7 @@ test/                     # Unit tests
 - **Runtime**: Bun + TypeScript
 - **LLM**: OpenAI-compatible API or ACP (Agent Client Protocol)
 - **Analysis**: CodeGraph + file scanning
-- **Diagrams**: Mermaid (flowchart + sequenceDiagram)
+- **Diagrams**: Mermaid (flowchart + sequenceDiagram, role-aware)
 - **Validation**: unified + remark-parse (Markdown AST)
 - **Config**: YAML (js-yaml)
 

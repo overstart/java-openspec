@@ -6,6 +6,11 @@ function generateContextDiagram(result: AnalysisResult): string {
   const { projectInfo, securityInfo } = result;
   const serviceNames = projectInfo.serviceModules.map((m) => m.artifactId);
 
+  const hasGateway = serviceNames.some((s) => s.toLowerCase().includes("gateway"));
+  const hasAuth = serviceNames.some((s) => s.toLowerCase().includes("auth"));
+  const hasSearch = serviceNames.some((s) => s.toLowerCase().includes("search"));
+  const hasMonitor = serviceNames.some((s) => s.toLowerCase().includes("monitor"));
+
   const lines = [
     "flowchart TB",
     "    subgraph External[\"External Users\"]",
@@ -13,7 +18,7 @@ function generateContextDiagram(result: AnalysisResult): string {
     "        Mobile[\"👤 Mobile User<br/>移动端用户\"]",
     "    end",
     "",
-    `    subgraph System[\"${projectInfo.artifactId}<br/>微服务商城系统\"]`,
+    `    subgraph System[\"${projectInfo.artifactId}<br/>微服务系统\"]`,
   ];
 
   for (const svc of serviceNames) {
@@ -23,37 +28,46 @@ function generateContextDiagram(result: AnalysisResult): string {
   lines.push("    end");
   lines.push("");
 
-  // 外部系统
   lines.push("    subgraph ExternalSystems[\"External Systems\"]");
-  lines.push("        Nacos[\"Nacos<br/>注册/配置中心\"]");
   lines.push("        MySQL[\"MySQL<br/>数据库\"]");
   lines.push("        Redis[\"Redis<br/>缓存\"]");
-  lines.push("        ES[\"Elasticsearch<br/>搜索引擎\"]");
+  if (hasSearch) lines.push("        ES[\"Elasticsearch<br/>搜索引擎\"]");
   lines.push("        RabbitMQ[\"RabbitMQ<br/>消息队列\"]");
   lines.push("        OSS[\"OSS/MinIO<br/>对象存储\"]");
   lines.push("    end");
   lines.push("");
 
-  // 关系
-  lines.push("    Admin --> mall_gateway");
-  lines.push("    Mobile --> mall_gateway");
-  lines.push("    mall_gateway --> mall_auth");
-  lines.push("    mall_gateway --> mall_admin");
-  lines.push("    mall_gateway --> mall_portal");
-  lines.push("    mall_gateway --> mall_search");
-  lines.push("");
-
-  for (const svc of serviceNames) {
-    const key = svc.replace(/-/g, "_");
-    if (!svc.includes("gateway") && !svc.includes("monitor") && !svc.includes("common") && !svc.includes("demo") && !svc.includes("mbg")) {
-      lines.push(`    ${key} --> MySQL`);
-      lines.push(`    ${key} --> Redis`);
+  if (hasGateway) {
+    const gwKey = serviceNames.find((s) => s.toLowerCase().includes("gateway"))!.replace(/-/g, "_");
+    lines.push("    Admin --> " + gwKey);
+    lines.push("    Mobile --> " + gwKey);
+    const crudServices = serviceNames.filter((s) =>
+      !s.toLowerCase().includes("gateway") && !s.toLowerCase().includes("monitor") &&
+      !s.toLowerCase().includes("common") && !s.toLowerCase().includes("demo") && !s.toLowerCase().includes("mbg"));
+    for (const svc of crudServices) {
+      lines.push(`    ${gwKey} --> ${svc.replace(/-/g, "_")}`);
     }
+    lines.push("");
+  } else {
+    lines.push("    Admin --> Client");
+    lines.push("    Mobile --> Client");
+    lines.push("");
   }
 
-  lines.push("    mall_search --> ES");
-  lines.push("    mall_admin --> RabbitMQ");
-  lines.push("    mall_admin --> OSS");
+  const crudServices = serviceNames.filter((s) =>
+    !s.toLowerCase().includes("gateway") && !s.toLowerCase().includes("monitor") &&
+    !s.toLowerCase().includes("common") && !s.toLowerCase().includes("demo") && !s.toLowerCase().includes("mbg"));
+
+  for (const svc of crudServices) {
+    const key = svc.replace(/-/g, "_");
+    lines.push(`    ${key} --> MySQL`);
+    lines.push(`    ${key} --> Redis`);
+  }
+
+  if (hasSearch) {
+    const searchKey = serviceNames.find((s) => s.toLowerCase().includes("search"))!.replace(/-/g, "_");
+    lines.push(`    ${searchKey} --> ES`);
+  }
 
   return lines.join("\n");
 }
@@ -68,7 +82,7 @@ function detectServiceRole(svc: MavenModule): "gateway" | "monitor" | "auth" | "
   return "crud";
 }
 
-// 生成 C4 Container 图 per service (role-aware)
+// 生成 C4 Container 图 per service (role-aware, dynamic)
 function generateContainerDiagram(svc: MavenModule, result: AnalysisResult): string {
   const key = svc.artifactId.replace(/-/g, "_");
   const role = detectServiceRole(svc);
@@ -98,16 +112,6 @@ function generateContainerDiagram(svc: MavenModule, result: AnalysisResult): str
         `    subgraph ${key}[\"${svc.artifactId}<br/>监控中心\"]`,
         `        ${key}_server[\"Spring Boot Admin<br/>Server\"]`,
         "    end",
-        "",
-        `    subgraph Targets[\"监控目标\"]`,
-        `        target1[\"mall-admin\"]`,
-        `        target2[\"mall-portal\"]`,
-        `        target3[\"mall-search\"]`,
-        "    end",
-        "",
-        `    ${key}_server --> target1`,
-        `    ${key}_server --> target2`,
-        `    ${key}_server --> target3`,
       );
       break;
 
@@ -173,7 +177,7 @@ function generateContainerDiagram(svc: MavenModule, result: AnalysisResult): str
   return lines.join("\n");
 }
 
-// 生成时序图
+// 生成时序图（动态基于服务名）
 function generateSequenceDiagram(
   svc: MavenModule,
   result: AnalysisResult
@@ -216,12 +220,11 @@ function generateSequenceDiagram(
   return lines.join("\n");
 }
 
-// 生成数据流图
+// 生成数据流图（动态从分析结果构建）
 function generateDataFlowDiagram(result: AnalysisResult): string {
-  const { serviceAnalyses } = result;
+  const { serviceAnalyses, projectInfo } = result;
   const lines = ["flowchart LR"];
 
-  // 收集所有 Feign 客户端
   const feignCalls: Array<{ from: string; to: string }> = [];
   for (const [svcName, analysis] of Object.entries(serviceAnalyses)) {
     for (const fc of analysis?.feignClients ?? []) {
@@ -229,14 +232,12 @@ function generateDataFlowDiagram(result: AnalysisResult): string {
     }
   }
 
-  // 标准数据流
   lines.push("    Client --> Controller");
   lines.push("    Controller --> Service");
   lines.push("    Service --> DAO");
   lines.push("    DAO --> DB[(MySQL)]");
   lines.push("    Service --> Redis[(Redis)]");
 
-  // Feign 跨服务调用
   for (const call of feignCalls) {
     const fromKey = call.from.replace(/-/g, "_");
     const toKey = call.to.replace(/-/g, "_");

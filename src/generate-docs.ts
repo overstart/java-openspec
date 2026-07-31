@@ -244,7 +244,7 @@ function generateBusinessDomainsIndex(result: AnalysisResult): string {
 
     lines.push(`\n### ${prefix} — ${domainName}`);
     for (const r of related) {
-      lines.push(`- [${r.artifactId}](/${r.artifactId}/business-domains.md) — ${r.ctrlCount} controllers, ${r.methodCount} methods`);
+      lines.push(`- [${r.artifactId}](./${r.artifactId}/business-domains.md) — ${r.ctrlCount} controllers, ${r.methodCount} methods`);
     }
   }
 
@@ -278,7 +278,7 @@ function generateApiContractsRaw(
   return lines.join("\n");
 }
 
-// 添加交叉引用
+// 添加交叉引用（不含 api-contracts.md，按服务生成）
 function addCrossReferences(content: string): string {
   const links = [
     `[architecture.md](architecture.md)`,

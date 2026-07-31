@@ -21,26 +21,18 @@ export async function createStore(
     ? resolve(options.output)
     : join(dirname(rootPath), `${artifactId}-specs`);
 
-  // 6.1: 使用 openspec store setup 创建骨架
   console.log(t.storeCreating(storePath));
   const storeId = `${artifactId}-specs`;
   runCommand(["openspec", "store", "setup", storeId, "--path", storePath, "--no-init-git"]);
 
-  // 确保目录存在
   const docsDir = join(storePath, "openspec", "docs");
   const diagramsDir = join(docsDir, "diagrams");
   await mkdir(diagramsDir, { recursive: true });
 
-  // 填充 config.yaml context 和 rules
   await fillConfigYaml(storePath, result);
-
-  // 添加 remote 到 store.yaml
   await fillStoreYaml(storePath, rootPath);
-
-  // 生成 specs/ 文件
   await generateSpecs(storePath, result);
 
-  // 6.2: 写入 spec 文件
   console.log(t.storeWritingSpecs);
   for (const doc of docs) {
     const filePath = join(storePath, doc.path);
@@ -48,18 +40,15 @@ export async function createStore(
     await writeFile(filePath, doc.content, "utf-8");
   }
 
-  // 6.4: 写入图表源文件
   console.log(t.storeWritingDiagrams);
   for (const diag of diagrams) {
     const filePath = join(diagramsDir, diag.filename);
     await writeFile(filePath, diag.content, "utf-8");
   }
 
-  // 6.5: 注册 store
   console.log(t.storeRegistering);
   runCommand(["openspec", "store", "register", storePath]);
 
-  // 6.7: 校验 store
   console.log(t.storeValidating);
   const doctorOutput = runCommand(["openspec", "store", "doctor", `${artifactId}-specs`]);
   console.log(doctorOutput);
@@ -67,7 +56,6 @@ export async function createStore(
   return storePath;
 }
 
-// 填充 config.yaml 的 context 和 rules 字段
 async function fillConfigYaml(storePath: string, result: AnalysisResult): Promise<void> {
   const configPath = join(storePath, "openspec", "config.yaml");
   const { projectInfo, globalPatterns, securityInfo } = result;
@@ -82,12 +70,10 @@ async function fillConfigYaml(storePath: string, result: AnalysisResult): Promis
     .map((p) => `${p.type}: ${p.pattern}`)
     .join("; ");
 
-  const context = lang === "zh"
-    ? `Tech stack: ${techStack}\nArchitecture: Microservices (${projectInfo.serviceModules.length} services)\nAuth: ${securityInfo.authFramework}\nNaming: ${namingPattern}\nBusiness domains: ${prefixes}`
-    : `Tech stack: ${techStack}\nArchitecture: Microservices (${projectInfo.serviceModules.length} services)\nAuth: ${securityInfo.authFramework}\nNaming: ${namingPattern}\nBusiness domains: ${prefixes}`;
+  const context = `Tech stack: ${techStack}\nArchitecture: Microservices (${projectInfo.serviceModules.length} services)\nAuth: ${securityInfo.authFramework}\nNaming: ${namingPattern}\nBusiness domains: ${prefixes}`;
 
   const rulesProposal = lang === "zh"
-    ? `- \u9075\u5faa\u73b0\u6709\u547d\u540d\u89c4\u8303: ${namingPattern}\n- \u4f7f\u7528 ${securityInfo.authFramework} \u505a\u8ba4\u8bc1\u6388\u6743`
+    ? `- 遵循现有命名规范: ${namingPattern}\n- 使用 ${securityInfo.authFramework} 做认证授权`
     : `- Follow existing naming conventions: ${namingPattern}\n- Use ${securityInfo.authFramework} for authentication`;
 
   const configYaml = `schema: spec-driven
@@ -103,7 +89,6 @@ ${rulesProposal.split("\n").map((r: string) => `    ${r}`).join("\n")}
   await writeFile(configPath, configYaml, "utf-8");
 }
 
-// 添加 remote 到 store.yaml
 async function fillStoreYaml(storePath: string, rootPath: string): Promise<void> {
   const gitConfigPath = join(rootPath, ".git", "config");
   if (!existsSync(gitConfigPath)) return;
@@ -125,39 +110,57 @@ async function fillStoreYaml(storePath: string, rootPath: string): Promise<void>
   }
 }
 
-// 生成 specs/ 文件
 async function generateSpecs(storePath: string, result: AnalysisResult): Promise<void> {
   const specsDir = join(storePath, "openspec", "specs");
   const { globalPatterns, securityInfo, projectInfo } = result;
 
-  // coding-conventions
-  const codingConvDir = join(specsDir, "coding-conventions");
-  await mkdir(codingConvDir, { recursive: true });
+  const specTitle = (name: string, purpose: string) =>
+    `# ${name} Specification\n\n## Purpose\n\n${purpose}\n\n## Requirements`;
+
   const namingReq = globalPatterns.namingPatterns
-    .map((p) => `### Requirement: ${p.type} \u547d\u540d\u89c4\u8303\n${p.type} \u5e94\u9075\u5faa ${p.pattern} \u547d\u540d\u6a21\u5f0f\u3002\n\n#### Scenario: \u5df2\u6709\u793a\u4f8b\n- **WHEN** \u67e5\u770b\u4ee3\u7801\u4e2d\u7684 ${p.type} \u7c7b\n- **THEN** \u540d\u79f0\u7b26\u5408 ${p.pattern} \u6a21\u5f0f\uff08\u793a\u4f8b: ${p.examples.join(", ")}\uff09`)
+    .map((p) => {
+      const reqTitle = lang === "zh" ? `${p.type} 命名规范` : `${p.type} naming conventions`;
+      const desc = lang === "zh"
+        ? `${p.type} 应遵循 ${p.pattern} 命名模式。`
+        : `${p.type} should follow ${p.pattern} naming pattern.`;
+      const scenario = lang === "zh"
+        ? `- **WHEN** 查看代码中的 ${p.type} 类\n- **THEN** 名称符合 ${p.pattern} 模式（示例: ${p.examples.join(", ")}）`
+        : `- **WHEN** looking at ${p.type} classes\n- **THEN** names follow ${p.pattern} pattern (e.g., ${p.examples.join(", ")})`;
+      return `### Requirement: ${reqTitle}\n${desc}\n\n#### Scenario: ${lang === "zh" ? "已有示例" : "Existing examples"}\n${scenario}`;
+    })
     .join("\n\n");
 
-  await writeFile(join(codingConvDir, "spec.md"),
-    `# coding-conventions\n\n## Purpose\n\n\u9879\u76ee\u7f16\u7801\u89c4\u8303\u5b9a\u4e49\u3002\n\n## Requirements\n\n${namingReq}\n`, "utf-8");
+  await writeFile(join(specsDir, "coding-conventions", "spec.md"),
+    `${specTitle("coding-conventions", lang === "zh" ? "项目编码规范定义。" : "Project coding conventions.")}\n\n${namingReq}\n`, "utf-8");
 
-  // service-architecture
-  const archDir = join(specsDir, "service-architecture");
-  await mkdir(archDir, { recursive: true });
   const depGraph = Object.entries(projectInfo.dependencyGraph)
     .filter(([, deps]) => deps.length > 0)
     .map(([mod, deps]) => `- ${mod} -> ${deps.join(", ")}`)
     .join("\n");
 
-  await writeFile(join(archDir, "spec.md"),
-    `# service-architecture\n\n## Purpose\n\n\u670d\u52a1\u67b6\u6784\u89c4\u8303\u5b9a\u4e49\u3002\n\n## Requirements\n\n### Requirement: \u670d\u52a1\u6a21\u5757\u62d3\u6251\n\u9879\u76ee\u5305\u542b ${projectInfo.serviceModules.length} \u4e2a\u670d\u52a1\u6a21\u5757\u3002\n\n#### Scenario: \u6a21\u5757\u4f9d\u8d56\u5173\u7cfb\n- **WHEN** \u67e5\u770b\u670d\u52a1\u95f4\u4f9d\u8d56\n- **THEN** ${depGraph || "\u65e0\u670d\u52a1\u95f4\u4f9d\u8d56"}\n`, "utf-8");
+  const topoReq = lang === "zh" ? "服务模块拓扑" : "Service module topology";
+  const depScenario = lang === "zh" ? "模块依赖关系" : "Module dependency graph";
+  const depWhen = lang === "zh" ? "查看服务间依赖" : "inspecting service dependencies";
+  const depThen = depGraph || (lang === "zh" ? "无服务间依赖" : "No service dependencies");
 
-  // security-patterns
-  const secDir = join(specsDir, "security-patterns");
-  await mkdir(secDir, { recursive: true });
-  await writeFile(join(secDir, "spec.md"),
-    `# security-patterns\n\n## Purpose\n\n\u5b89\u5168\u6a21\u5f0f\u5b9a\u4e49\u3002\n\n## Requirements\n\n### Requirement: \u8ba4\u8bc1\u6388\u6743\n\u9879\u76ee\u4f7f\u7528 ${securityInfo.authFramework} \u505a\u8ba4\u8bc1\u6388\u6743\u3002\n\n#### Scenario: \u6743\u9650\u6ce8\u89e3\n- **WHEN** \u67e5\u770b\u4ee3\u7801\u4e2d\u7684\u6743\u9650\u6ce8\u89e3\n- **THEN** \u4f7f\u7528 ${securityInfo.authAnnotations.join(", ") || "\u65e0"} \u6ce8\u89e3\n\n### Requirement: \u52a0\u5bc6\u7b97\u6cd5\n${securityInfo.encryptionAlgorithms.length > 0 ? `\u9879\u76ee\u4f7f\u7528 ${securityInfo.encryptionAlgorithms.join(", ")} \u52a0\u5bc6\u7b97\u6cd5\u3002` : "\u672a\u68c0\u6d4b\u5230\u52a0\u5bc6\u7b97\u6cd5\u3002"}\n\n#### Scenario: \u52a0\u5bc6\u5e93\n- **WHEN** \u67e5\u770b\u52a0\u5bc6\u5b9e\u73b0\n- **THEN** \u4f7f\u7528 ${securityInfo.encryptionLibraries.join(", ") || "\u65e0"} \u52a0\u5bc6\u5e93\n`, "utf-8");
+  await writeFile(join(specsDir, "service-architecture", "spec.md"),
+    `${specTitle("service-architecture", lang === "zh" ? "服务架构规范定义。" : "Service architecture conventions.")}\n\n### Requirement: ${topoReq}\n项目包含 ${projectInfo.serviceModules.length} 个服务模块。\n\n#### Scenario: ${depScenario}\n- **WHEN** ${depWhen}\n- **THEN** ${depThen}\n`, "utf-8");
+
+  const authReq = lang === "zh" ? "认证授权" : "Authentication & Authorization";
+  const authScenario = lang === "zh" ? "权限注解" : "Auth annotations";
+  const authWhen = lang === "zh" ? "查看代码中的权限注解" : "inspecting auth annotations";
+  const authThen = `${securityInfo.authAnnotations.join(", ") || (lang === "zh" ? "无" : "none")}`;
+  const encReq = lang === "zh" ? "加密算法" : "Encryption algorithms";
+  const encDesc = securityInfo.encryptionAlgorithms.length > 0
+    ? (lang === "zh" ? `项目使用 ${securityInfo.encryptionAlgorithms.join(", ")} 加密算法。` : `Uses ${securityInfo.encryptionAlgorithms.join(", ")}.`)
+    : (lang === "zh" ? "未检测到加密算法。" : "No encryption algorithms detected.");
+  const encScenario = lang === "zh" ? "加密库" : "Encryption libraries";
+  const encWhen = lang === "zh" ? "查看加密实现" : "inspecting encryption implementation";
+  const encThen = `${securityInfo.encryptionLibraries.join(", ") || (lang === "zh" ? "无" : "none")}`;
+
+  await writeFile(join(specsDir, "security-patterns", "spec.md"),
+    `${specTitle("security-patterns", lang === "zh" ? "安全模式定义。" : "Security patterns.")}\n\n### Requirement: ${authReq}\n项目使用 ${securityInfo.authFramework} 做认证授权。\n\n#### Scenario: ${authScenario}\n- **WHEN** ${authWhen}\n- **THEN** 使用 ${authThen} 注解\n\n### Requirement: ${encReq}\n${encDesc}\n\n#### Scenario: ${encScenario}\n- **WHEN** ${encWhen}\n- **THEN** 使用 ${encThen} 加密库\n`, "utf-8");
 }
-
 
 export function generateReport(
   result: AnalysisResult,
@@ -165,6 +168,27 @@ export function generateReport(
   diagrams: DiagramFile[],
   storePath: string
 ): string {
+  const serviceModules = result.projectInfo.serviceModules.filter((m) => m.isService);
+
+  const globalDocNames = [
+    "overview.md",
+    "coding-style.md",
+    "architecture.md",
+    "security.md",
+    "business-domains.md",
+  ];
+  const reportGlobalDocs = globalDocNames.map((n) => `  - ${n}`);
+
+  const reportPerServiceDocs = serviceModules.flatMap((m) => {
+    const lines: string[] = [];
+    lines.push(`  - ${m.artifactId}/architecture.md`);
+    lines.push(`  - ${m.artifactId}/business-domains.md`);
+    if (result.serviceAnalyses[m.artifactId]?.controllers.length) {
+      lines.push(`  - ${m.artifactId}/api-contracts.md`);
+    }
+    return lines;
+  });
+
   const lines = [
     "=".repeat(60),
     `  ${t.reportTitle}`,
@@ -182,19 +206,10 @@ export function generateReport(
     t.reportDiagramFiles(diagrams.length),
     "",
     t.reportGlobalSpecs,
-    `  - overview.md`,
-    `  - coding-style.md`,
-    `  - architecture.md`,
-    `  - security.md`,
-    `  - business-domains.md`,
+    ...reportGlobalDocs,
     "",
     t.reportServiceSpecs,
-    ...result.projectInfo.serviceModules
-      
-      .map((m) => `  - ${m.artifactId}/architecture.md`),
-    ...result.projectInfo.serviceModules
-      .filter((m) => result.serviceAnalyses[m.artifactId]?.controllers.length)
-      .map((m) => `  - ${m.artifactId}/api-contracts.md`),
+    ...reportPerServiceDocs,
     "",
     "=".repeat(60),
   ];

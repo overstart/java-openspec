@@ -8,22 +8,23 @@
 
 - 自动检测 Maven 多模块项目中的 Spring Boot 微服务模块
 - 基于 CodeGraph AST 分析提取项目结构、命名规范、代码模式
-- 使用 LLM 生成规范文档（项目总览、编码规范、架构规范、安全规范）
-- 使用 Mermaid 生成 C4 架构图 + 业务时序图
-- 输出为 OpenSpec 1.5.0 store，自动注册
+- 使用 LLM 生成规范文档（项目总览、编码规范、架构规范、安全规范），或无 LLM 模式输出原始分析数据
+- 按服务生成 `business-domains.md`（方法级表格）+ 全局领域导航索引
+- 按服务生成 `api-contracts.md`（完整端点信息）
+- 使用 Mermaid 生成 C4 架构图 + 业务时序图（角色感知，动态构建）
+- 输出为 OpenSpec 1.7.0 store，自动注册
 
 ## 前置条件
 
 | 工具 | 最低版本 | 用途 | 检查命令 |
 |------|---------|------|---------|
 | [Bun](https://bun.sh) | 1.3 | 运行时 | `bun --version` |
-| [CodeGraph](https://github.com/colbymchenry/codegraph) | 1.4 | Java AST 分析 | `codegraph --version` |
-| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.6 | Store 创建与注册 | `openspec --version` |
+| [CodeGraph](https://github.com/colbymchenry/codegraph) | 1.5 | Java AST 分析 | `codegraph --version` |
+| [OpenSpec](https://github.com/Fission-AI/OpenSpec) | 1.7 | Store 创建与注册 | `openspec --version` |
 
 ### 安装 CodeGraph
 
 ```bash
-# 安装后需对目标项目执行 codegraph init 建立索引
 codegraph --version
 ```
 
@@ -59,7 +60,6 @@ java-openspec --version
 # 全局配置 (推荐)
 mkdir -p ~/.config/java-openspec
 cp .env.example ~/.config/java-openspec/.env
-# 编辑 ~/.config/java-openspec/.env，填入 API Key
 ```
 
 支持两种 LLM 后端：
@@ -73,11 +73,6 @@ cp .env.example ~/.config/java-openspec/.env
 OPENAI_API_KEY=sk-xxx
 LLM_MODEL=gpt-4o-mini
 LLM_BASE_URL=https://api.openai.com/v1
-
-# .env 示例 - 火山引擎 Ark
-# OPENAI_API_KEY=your-ark-key
-# LLM_MODEL=deepseek-v4-flash
-# LLM_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
 ```
 
 ### ACP 模式（无需 API key）
@@ -86,7 +81,6 @@ LLM_BASE_URL=https://api.openai.com/v1
 
 ```bash
 # .env 示例 - ACP 模式
-# 首推：opencode acp（需已安装 opencode）
 ACP_AGENT_CMD=opencode acp
 
 # 其他兼容 agent：
@@ -107,13 +101,14 @@ flowchart TB
 
     CP -->|"OPENAI_API_KEY 存在"| OAI["OpenAIProvider<br/>HTTP API + API key"]
     CP -->|"无 key, ACP_AGENT_CMD 存在"| ACP["ACPProvider<br/>stdio + agent 子进程"]
-    CP -->|"都没有"| ERR["Error: 未配置 LLM"]
+    CP -->|"都没有"| NL["无 LLM 模式<br/>输出原始分析数据"]
 
     OAI -->|"4+N 并行 HTTP 请求"| API["OpenAI-compatible API"]
     ACP -->|"4+N 并行 session"| AGENT["ACP Agent<br/>opencode acp / claude-code-acp / ..."]
+    NL -->|"直接提取"| RAW["内置模板 + 前缀映射"]
 ```
 
-Provider 抽象层（`src/providers/`）将 LLM 调用与 pipeline 解耦。`generate-docs.ts` 调用 `createProvider()` 根据环境变量选择后端，pipeline 和其他模块完全不变。
+Provider 抽象层（`src/providers/`）将 LLM 调用与 pipeline 解耦。无 LLM 配置时自动降级为无 LLM 模式，直接输出结构化分析数据。
 
 ## 用法
 
@@ -160,18 +155,18 @@ java-openspec init --config java-openspec.yml --output /path/to/store
     │   └── security-patterns/spec.md
     └── docs/
         ├── overview.md           # 全局项目总览（含交叉引用）
-        ├── coding-style.md       # 全局编码规范
-        ├── architecture.md       # 全局架构规范
-        ├── security.md           # 全局安全规范
-        ├── business-domains.md   # 业务域映射（免 LLM）
+        ├── coding-style.md       # 全局编码规范（LLM 或原始数据）
+        ├── architecture.md       # 全局架构规范（LLM 或原始数据）
+        ├── security.md           # 全局安全规范（LLM 或原始数据）
+        ├── business-domains.md   # 领域导航索引（免 LLM，自动生成）
         ├── diagrams/
         │   ├── context.mmd               # C4 System Context
         │   ├── data-flow.mmd             # 数据流图
-        │   ├── <service>-container.mmd   # C4 Container
+        │   ├── <service>-container.mmd   # C4 Container（角色感知）
         │   └── <service>-flow.mmd        # 业务时序图
         └── <service>/
             ├── architecture.md
-            ├── business-domains.md       # 按服务业务域概览
+            ├── business-domains.md       # 按服务方法级业务域概览
             └── api-contracts.md          # 按服务 API 端点 + Feign 客户端
 ```
 
@@ -183,9 +178,9 @@ detect → analyze → generate-diagrams → generate-docs → create-store → 
 
 1. **detect** — 扫描 pom.xml，识别微服务模块与公共库模块
 2. **analyze** — CodeGraph 索引 + 文件扫描，提取命名模式、调用路径、安全模式
-3. **generate-diagrams** — Mermaid flowchart/sequenceDiagram 生成架构图
-4. **generate-docs** — LLM 根据分析结果 + 模板生成 spec 文档
-5. **create-store** — 调用 openspec CLI 创建 store 并注册
+3. **generate-diagrams** — Mermaid flowchart/sequenceDiagram 生成（角色感知，动态构建）
+4. **generate-docs** — LLM 或无 LLM 根据分析结果 + 模板生成 spec 文档
+5. **create-store** — 调用 openspec CLI 创建 store、注册并校验
 6. **validate** — openspec store doctor 校验输出
 
 ## 项目结构
@@ -195,19 +190,20 @@ src/
 ├── index.ts              # CLI 入口
 ├── pipeline.ts           # 主流程编排
 ├── detect.ts             # Maven 项目检测
-├── analyze.ts            # CodeGraph 分析
-├── generate-diagrams.ts  # Mermaid 图表生成
-├── generate-docs.ts      # LLM 文档生成
+├── analyze.ts            # CodeGraph 分析（通过 codegraph explore 提取注解）
+├── generate-diagrams.ts  # Mermaid 图表生成（角色感知，动态构建）
+├── generate-docs.ts      # LLM / 无 LLM 文档生成
 ├── providers/            # LLM provider 抽象层
 │   ├── index.ts          # createProvider() 选择逻辑
 │   ├── openai-provider.ts # OpenAI 后端
 │   └── acp-provider.ts   # ACP (Agent Client Protocol) 后端
-├── create-store.ts       # OpenSpec store 创建
+├── create-store.ts       # OpenSpec store 创建 + spec 生成
 ├── postprocess.ts        # LLM 输出后处理
 ├── env.ts                # .env 加载
 ├── pricing.ts            # Token 费用估算
+├── i18n.ts               # 中英文国际化
 └── types.ts              # 类型定义
-templates/                # LLM prompt 模板
+templates/                # LLM prompt 模板（zh/en）
 spec-templates/           # Spec 结构校验 schema
 test/                     # 单元测试
 ```
@@ -217,6 +213,6 @@ test/                     # 单元测试
 - **运行时**: Bun + TypeScript
 - **LLM**: OpenAI-compatible API 或 ACP (Agent Client Protocol)
 - **分析**: CodeGraph + 文件扫描
-- **图表**: Mermaid (flowchart + sequenceDiagram)
+- **图表**: Mermaid (flowchart + sequenceDiagram，角色感知)
 - **文档校验**: unified + remark-parse (Markdown AST)
 - **配置**: YAML (js-yaml)

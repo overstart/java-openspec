@@ -8,7 +8,7 @@ const program = new Command();
 program
   .name("java-openspec")
   .description(t.cliDescription)
-  .version("0.7.0");
+  .version("0.8.0");
 
 program
   .command("init")
