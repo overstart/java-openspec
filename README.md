@@ -1,5 +1,8 @@
 # java-openspec
 
+[![Build Status](https://github.com/overstart/java-openspec/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/overstart/java-openspec/actions)
+[![NPM Version](https://img.shields.io/npm/v/java-openspec)](https://www.npmjs.com/package/java-openspec)
+
 [中文文档](README.zh-CN.md)
 
 A CLI tool that auto-generates OpenSpec stores from Java Spring Cloud projects.

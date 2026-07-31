@@ -1,5 +1,8 @@
 # java-openspec
 
+[![Build Status](https://github.com/overstart/java-openspec/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/overstart/java-openspec/actions)
+[![NPM Version](https://img.shields.io/npm/v/java-openspec)](https://www.npmjs.com/package/java-openspec)
+
 [English](README.md)
 
 从 Java Spring Cloud 项目自动生成 OpenSpec store 的 CLI 工具。
